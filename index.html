@@ -112,45 +112,45 @@ label:first-child{margin-top:0;}
 .opt{text-transform:none; font-weight:500; letter-spacing:0; color:var(--ink-mut); font-size:11px;}
 .check-label{display:flex; align-items:center; gap:8px; flex-direction:row; text-transform:none; font-weight:500; font-size:13.5px; color:var(--ink);}
 
-/* Scheme code suggestions — a leaf from the register's scheme index */
-.scheme-field{position:relative;}
-.scheme-suggest{
+/* Index leaves — scheme / item / work-order pickers, pulled from the register's indexes */
+.field-wrap{position:relative;}
+.ix-panel{
   position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:12;
   background:#FBF6E8; border:1px solid #E2D9BC; border-radius:2px;
   box-shadow:0 12px 24px -12px rgba(8,13,26,.4);
   max-height:252px; overflow-y:auto;
   display:none;
 }
-.scheme-suggest.open{display:block;}
-.sc-head{
+.ix-panel.open{display:block;}
+.ix-head{
   position:sticky; top:0; z-index:1;
   display:flex; align-items:baseline; justify-content:space-between; gap:10px;
   padding:9px 10px 8px; border-bottom:1.5px solid var(--rule-strong);
   background:#FBF6E8;
 }
-.sc-head .sc-title{font-family:var(--stamp); font-size:12px; color:var(--margin); letter-spacing:.04em;}
-.sc-head .sc-count{font-family:var(--stamp); font-size:11px; color:var(--ink-mut);}
-.sc-row{
+.ix-head .ix-title{font-family:var(--stamp); font-size:12px; color:var(--margin); letter-spacing:.04em;}
+.ix-head .ix-count{font-family:var(--stamp); font-size:11px; color:var(--ink-mut);}
+.ix-row{
   position:relative; display:flex; align-items:center; gap:8px;
   padding:9px 10px; border-bottom:1px solid var(--rule); cursor:pointer;
 }
-.sc-row::before{
+.ix-row::before{
   content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
   background:var(--margin); opacity:0; transition:opacity .12s ease;
 }
-.sc-row:last-child{border-bottom:none;}
-.sc-row:hover, .sc-row.active{background:#FFFDF5;}
-.sc-row:hover::before, .sc-row.active::before{opacity:1;}
-.sc-row .sc-code{
+.ix-row:last-child{border-bottom:none;}
+.ix-row:hover, .ix-row.active{background:#FFFDF5;}
+.ix-row:hover::before, .ix-row.active::before{opacity:1;}
+.ix-row .ix-code{
   flex-shrink:0; min-width:92px;
   font-family:var(--stamp); font-size:12px; color:var(--margin);
 }
-.sc-row .sc-name{
+.ix-row .ix-name{
   flex:1; min-width:0;
   font-size:12.5px; line-height:1.45; color:var(--ink);
   overflow-wrap:break-word;
 }
-.sc-empty{padding:12px 10px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
+.ix-empty{padding:12px 10px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
 
 input[type=text], input[type=date], input[type=number], textarea, select{
   width:100%; padding:9px 2px;
@@ -183,12 +183,12 @@ button:focus-visible, a:focus-visible{
 .stamp.issue.active{background:var(--margin); border-color:var(--margin); color:#FBE9E3; transform:rotate(-2deg); box-shadow:0 3px 0 rgba(178,58,42,.4);}
 .stamp.receipt.active{background:var(--receipt); border-color:var(--receipt); color:#EAF4EC; transform:rotate(-2deg); box-shadow:0 3px 0 rgba(47,111,74,.4);}
 
-/* Work-order finder */
-.wo-finder{border:1px solid var(--rule); border-radius:3px; padding:11px; background:#FFFDF5;}
-.wo-finder-row{display:flex; gap:10px;}
+/* Work-order finder — search row + "Work order index" leaf */
+.wo-finder{position:relative;}
+.wo-finder-row{display:flex; gap:10px; align-items:flex-end;}
 .wo-finder-row select{
-  flex:0 0 82px; padding:9px 6px; font-size:13px; text-align:center;
-  border:1px solid var(--rule-strong); border-radius:3px; background:#FFFDF5;
+  flex:0 0 74px; padding:9px 4px; font-size:13px; text-align:center;
+  border:none; border-bottom:1.5px solid var(--rule-strong); border-radius:0; background:transparent;
 }
 .wo-search-wrap{position:relative; flex:1; min-width:0;}
 .wo-search-wrap svg{
@@ -196,20 +196,17 @@ button:focus-visible, a:focus-visible{
   width:15px; height:15px; color:var(--ink-mut); pointer-events:none;
 }
 .wo-search-wrap input{padding-left:30px;}
-.wo-results{max-height:250px; overflow-y:auto; margin-top:6px;}
-.wo-results:empty{margin-top:0;}
-.wo-result{
-  display:flex; align-items:center; gap:10px;
-  border-bottom:1px solid var(--rule); padding:11px 2px;
-  cursor:pointer;
+.wo-results{
+  position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:12;
+  background:#FBF6E8; border:1px solid #E2D9BC; border-radius:2px;
+  box-shadow:0 12px 24px -12px rgba(8,13,26,.4);
+  max-height:252px; overflow-y:auto;
+  display:none;
 }
-.wo-result:last-child{border-bottom:none;}
-.wo-result:hover .agency{color:var(--margin);}
-.wo-result-text{min-width:0; flex:1;}
-.wo-result .agency{font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.wo-result .meta{font-size:11.5px; color:var(--ink-mut); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.wo-result .arrow{flex-shrink:0; color:var(--ink); width:15px; height:15px;}
-.wo-note{font-size:12px; color:var(--ink-mut); padding:8px 2px 2px;}
+.wo-results.open{display:block;}
+.wo-row .ix-name{display:flex; flex-direction:column; gap:2px;}
+.wo-row .wo-agency{font-weight:600; font-size:13px;}
+.wo-row .wo-work{font-size:11.5px; color:var(--ink-mut); line-height:1.4;}
 
 /* Item lines — ledger rows */
 .item-line{
@@ -225,7 +222,7 @@ button:focus-visible, a:focus-visible{
 .item-line .remove-line:hover{color:var(--margin);}
 .item-line-grid{display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-top:10px;}
 .item-line-grid label{margin-top:0;}
-.item-line-head + label{margin-top:8px;}
+.item-line-head + .field-wrap label{margin-top:8px;}
 
 .add-line-btn{
   width:100%; padding:11px;
@@ -446,10 +443,10 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     <section class="fld-block">
       <h2 class="fld-title">Identification</h2>
       <div class="two-col">
-        <div class="field scheme-field">
+        <div class="field field-wrap">
           <label for="fSchemeCode">Scheme code</label>
           <input type="text" id="fSchemeCode" placeholder="e.g. SM/01013" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="schemeSuggest">
-          <div id="schemeSuggest" class="scheme-suggest"></div>
+          <div id="schemeSuggest" class="ix-panel"></div>
         </div>
         <div class="field">
           <label for="fSchemeName">Scheme name</label>
@@ -781,105 +778,137 @@ async function runWoSearch(){
   const q = $('woSearch').value.trim();
   const year = $('woYear').value;
   const results = $('woResults');
-  if(!q){ results.innerHTML=''; return; }
+  if(!q){ results.innerHTML=''; results.classList.remove('open'); return; }
   try{
     const data = await apiGet('workOrders', { year, q });
     if(!data.rows || !data.rows.length){
-      results.innerHTML = `<div class="wo-note">${data.note || 'No matches in ' + year + '.'}</div>`;
+      results.innerHTML = ixHead('Work order index') +
+        `<div class="ix-empty">${escapeHtml(data.note || 'No matches in ' + year + '.')}</div>`;
+      results.classList.add('open');
       return;
     }
-    results.innerHTML = data.rows.map((r,i)=>`
-      <div class="wo-result" data-i="${i}">
-        <div class="wo-result-text">
-          <div class="agency">${escapeHtml(r.AgencyName||'')}</div>
-          <div class="meta">${escapeHtml(r.WorkOrderNo||'')} &middot; ${escapeHtml(r.NameOfWork||'').slice(0,60)}${(r.NameOfWork||'').length>60?'…':''}</div>
-        </div>
-        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    results.innerHTML = ixHead('Work order index', data.rows.length) + data.rows.map((r,i)=>`
+      <div class="ix-row wo-row" data-i="${i}">
+        <span class="ix-code">${escapeHtml(r.WorkOrderNo||'—')}</span>
+        <span class="ix-name">
+          <span class="wo-agency">${escapeHtml(r.AgencyName||'')}</span>
+          <span class="wo-work">${escapeHtml(r.NameOfWork||'')}</span>
+        </span>
       </div>`).join('');
-    results.querySelectorAll('.wo-result').forEach(el=>{
+    results.classList.add('open');
+    results.querySelectorAll('.ix-row').forEach(el=>{
       el.addEventListener('click', ()=>{
         const r = data.rows[Number(el.dataset.i)];
         $('fAgency').value = r.AgencyName || '';
         $('fWorkOrder').value = [r.WorkOrderNo, r.WorkOrderDate ? ('DATED ' + r.WorkOrderDate) : ''].filter(Boolean).join(' ');
         $('fNameOfWork').value = r.NameOfWork || '';
         results.innerHTML = '';
+        results.classList.remove('open');
         $('woSearch').value = '';
         toast('Filled from work order master');
       });
     });
-  }catch(err){ results.innerHTML = `<div class="wo-note">${err.message}</div>`; }
+  }catch(err){
+    results.innerHTML = ixHead('Work order index') + `<div class="ix-empty">${escapeHtml(err.message)}</div>`;
+    results.classList.add('open');
+  }
 }
+$('woSearch').addEventListener('keydown', (e)=>{
+  const results = $('woResults');
+  if(!results.classList.contains('open')) return;
+  const rows = Array.from(results.querySelectorAll('.ix-row'));
+  if(!rows.length) return;
+  let idx = rows.indexOf(results.querySelector('.ix-row.active'));
+  if(e.key==='ArrowDown'){ e.preventDefault(); idx = (idx+1) % rows.length; }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); idx = (idx-1+rows.length) % rows.length; }
+  else if(e.key==='Enter' && idx > -1){ e.preventDefault(); rows[idx].click(); return; }
+  else if(e.key==='Escape'){ e.preventDefault(); results.classList.remove('open'); return; }
+  else return;
+  rows.forEach(r=>r.classList.remove('active'));
+  rows[idx].classList.add('active');
+  revealRow(results, rows[idx]);
+});
+$('woSearch').addEventListener('blur', ()=>setTimeout(()=>$('woResults').classList.remove('open'), 120));
+$('woResults').addEventListener('mousedown', (e)=>e.preventDefault());
 
 const fSchemeCode = $('fSchemeCode');
 const fSchemeName = $('fSchemeName');
 const schemeSuggest = $('schemeSuggest');
 
-function setSchemeOpen(open){
-  schemeSuggest.classList.toggle('open', open);
-  fSchemeCode.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
-
-function selectScheme(code){
-  fSchemeCode.value = code;
-  const match = META.schemes.find(s=>s.schemeCode===code);
-  fSchemeName.value = match ? match.schemeName : '';
-  setSchemeOpen(false);
-}
-
-const scHead = count => `<div class="sc-head">
-  <span class="sc-title">Scheme index</span>
-  ${count ? `<span class="sc-count">${count} ${count===1?'match':'matches'}</span>` : ''}
+const ixHead = (title, count) => `<div class="ix-head">
+  <span class="ix-title">${title}</span>
+  ${count ? `<span class="ix-count">${count} ${count===1?'match':'matches'}</span>` : ''}
 </div>`;
 
-function renderSchemeSuggest(){
-  schemeSuggest.innerHTML = '';
-  const q = fSchemeCode.value.trim().toLowerCase();
-  if(!q || !META.schemes.length){ setSchemeOpen(false); return; }
-  const matches = META.schemes
-    .filter(s=>s.schemeCode.toLowerCase().includes(q) || (s.schemeName||'').toLowerCase().includes(q))
-    .slice(0, 30);
-  schemeSuggest.innerHTML = matches.length
-    ? scHead(matches.length) + matches.map(s=>`
-      <div class="sc-row" data-code="${escapeHtml(s.schemeCode)}">
-        <span class="sc-code">${escapeHtml(s.schemeCode)}</span>
-        <span class="sc-name">${escapeHtml(s.schemeName||'')}</span>
-      </div>`).join('')
-    : scHead() + `<div class="sc-empty">No schemes match “${escapeHtml(fSchemeCode.value.trim())}”. Check the code or leave it blank.</div>`;
-  setSchemeOpen(true);
+function revealRow(panel, row){
+  if(row.offsetTop < panel.scrollTop) panel.scrollTop = row.offsetTop;
+  else if(row.offsetTop + row.offsetHeight > panel.scrollTop + panel.clientHeight)
+    panel.scrollTop = row.offsetTop + row.offsetHeight - panel.clientHeight;
 }
 
-fSchemeCode.addEventListener('input', ()=>{
-  const match = META.schemes.find(s=>s.schemeCode===fSchemeCode.value);
-  if(match) fSchemeName.value = match.schemeName;
-  renderSchemeSuggest();
-});
-fSchemeCode.addEventListener('focus', renderSchemeSuggest);
-fSchemeCode.addEventListener('blur', ()=>{
-  setTimeout(()=>setSchemeOpen(false), 120);
-});
-schemeSuggest.addEventListener('mousedown', (e)=>e.preventDefault());
-fSchemeCode.addEventListener('keydown', (e)=>{
-  if(!schemeSuggest.classList.contains('open')) return;
-  const rows = Array.from(schemeSuggest.querySelectorAll('.sc-row'));
-  if(!rows.length) return;
-  let idx = rows.indexOf(schemeSuggest.querySelector('.sc-row.active'));
-  if(e.key==='ArrowDown'){ e.preventDefault(); idx = (idx+1) % rows.length; }
-  else if(e.key==='ArrowUp'){ e.preventDefault(); idx = (idx-1+rows.length) % rows.length; }
-  else if(e.key==='Enter' && idx > -1){ e.preventDefault(); selectScheme(rows[idx].dataset.code); return; }
-  else if(e.key==='Escape'){ e.preventDefault(); setSchemeOpen(false); return; }
-  else return;
-  rows.forEach(r=>r.classList.remove('active'));
-  rows[idx].classList.add('active');
-  if(rows[idx].offsetTop < schemeSuggest.scrollTop){
-    schemeSuggest.scrollTop = rows[idx].offsetTop;
-  } else if(rows[idx].offsetTop + rows[idx].offsetHeight > schemeSuggest.scrollTop + schemeSuggest.clientHeight){
-    schemeSuggest.scrollTop = rows[idx].offsetTop + rows[idx].offsetHeight - schemeSuggest.clientHeight;
+/* Index-leaf autocomplete — one dropdown family for schemes and items */
+function bindIndexLeaf(input, panel, cfg){
+  const open = on => {
+    panel.classList.toggle('open', on);
+    input.setAttribute('aria-expanded', on ? 'true' : 'false');
+  };
+  const close = () => open(false);
+  const render = () => {
+    panel.innerHTML = '';
+    const q = input.value.trim().toLowerCase();
+    if(!q || !cfg.list.length){ close(); return; }
+    const matches = cfg.list
+      .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
+      .slice(0, 30);
+    panel.innerHTML = matches.length
+      ? ixHead(cfg.title, matches.length) + matches.map(s=>`
+        <div class="ix-row" data-code="${escapeHtml(cfg.codeOf(s))}">
+          <span class="ix-code">${escapeHtml(cfg.codeOf(s))}</span>
+          <span class="ix-name">${escapeHtml(cfg.nameOf(s)||'')}</span>
+        </div>`).join('')
+      : ixHead(cfg.title) + `<div class="ix-empty">No ${cfg.kind} match “${escapeHtml(input.value.trim())}”. Check the code or leave it blank.</div>`;
+    open(true);
+  };
+  const select = row => { cfg.onSelect(row.dataset.code); close(); };
+  input.addEventListener('input', ()=>{ if(cfg.onInput) cfg.onInput(); render(); });
+  input.addEventListener('focus', render);
+  input.addEventListener('blur', ()=>setTimeout(close, 120));
+  panel.addEventListener('mousedown', (e)=>e.preventDefault());
+  panel.addEventListener('click', (e)=>{
+    const row = e.target.closest('.ix-row');
+    if(row) select(row);
+  });
+  input.addEventListener('keydown', (e)=>{
+    if(!panel.classList.contains('open')) return;
+    const rows = Array.from(panel.querySelectorAll('.ix-row'));
+    if(!rows.length) return;
+    let idx = rows.indexOf(panel.querySelector('.ix-row.active'));
+    if(e.key==='ArrowDown'){ e.preventDefault(); idx = (idx+1) % rows.length; }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); idx = (idx-1+rows.length) % rows.length; }
+    else if(e.key==='Enter' && idx > -1){ e.preventDefault(); select(rows[idx]); return; }
+    else if(e.key==='Escape'){ e.preventDefault(); close(); return; }
+    else return;
+    rows.forEach(r=>r.classList.remove('active'));
+    rows[idx].classList.add('active');
+    revealRow(panel, rows[idx]);
+  });
+  return { close };
+}
+
+const schemePicker = bindIndexLeaf(fSchemeCode, schemeSuggest, {
+  title: 'Scheme index', kind: 'schemes',
+  list: META.schemes,
+  codeOf: s=>s.schemeCode,
+  nameOf: s=>s.schemeName,
+  onInput(){
+    const match = META.schemes.find(s=>s.schemeCode===fSchemeCode.value);
+    if(match) fSchemeName.value = match.schemeName;
+  },
+  onSelect(code){
+    fSchemeCode.value = code;
+    const match = META.schemes.find(s=>s.schemeCode===code);
+    fSchemeName.value = match ? match.schemeName : '';
   }
-});
-schemeSuggest.addEventListener('click', (e)=>{
-  const row = e.target.closest('.sc-row');
-  if(!row) return;
-  selectScheme(row.dataset.code);
 });
 
 function setType(t){
@@ -911,8 +940,11 @@ function addItemLine(){
       <span class="idx">Item</span>
       <button type="button" class="remove-line" aria-label="Remove line">&times;</button>
     </div>
-    <label>Item code</label>
-    <input type="text" class="li-code" list="itemList" placeholder="e.g. MI/01078">
+    <div class="field-wrap">
+      <label>Item code</label>
+      <input type="text" class="li-code" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="itemSuggest${id}">
+      <div class="ix-panel" id="itemSuggest${id}"></div>
+    </div>
     <label>Description</label>
     <input type="text" class="li-desc" placeholder="Item description">
     <div class="item-line-grid">
@@ -923,11 +955,25 @@ function addItemLine(){
     div.remove();
     renumberItemLines();
   });
-  div.querySelector('.li-code').addEventListener('input', (e)=>{
-    const match = META.items.find(i=>i.itemCode===e.target.value);
-    if(match){
-      div.querySelector('.li-desc').value = match.description;
-      div.querySelector('.li-unit').value = match.unit;
+  bindIndexLeaf(div.querySelector('.li-code'), div.querySelector('.ix-panel'), {
+    title: 'Item index', kind: 'items',
+    list: META.items,
+    codeOf: i=>i.itemCode,
+    nameOf: i=>i.description,
+    onInput(){
+      const match = META.items.find(i=>i.itemCode===div.querySelector('.li-code').value);
+      if(match){
+        div.querySelector('.li-desc').value = match.description;
+        div.querySelector('.li-unit').value = match.unit;
+      }
+    },
+    onSelect(code){
+      div.querySelector('.li-code').value = code;
+      const match = META.items.find(i=>i.itemCode===code);
+      if(match){
+        div.querySelector('.li-desc').value = match.description;
+        div.querySelector('.li-unit').value = match.unit;
+      }
     }
   });
   $('itemLines').appendChild(div);
@@ -973,7 +1019,7 @@ $('btnSubmit').addEventListener('click', async ()=>{
     // reset form
     $('fSchemeCode').value='';
     $('fSchemeName').value='';
-    setSchemeOpen(false);
+    schemePicker.close();
     $('fAgency').value='';
     $('fWorkOrder').value='';
     $('fNameOfWork').value='';
