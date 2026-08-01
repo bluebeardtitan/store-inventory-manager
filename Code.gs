@@ -18,8 +18,21 @@
  *  - SchemeMaster file: columns SchemeCode | SchemeName
  *  - Work Order Master: ONE file, with one TAB PER CALENDAR YEAR (e.g. "2025",
  *    "2026"), each with columns AgencyName | WorkOrderNo | WorkOrderDate | NameOfWork
- *  Point this script at them via the "Config" tab of this workbook (file
- *  IDs/URLs) — see README. This app never writes into these files.
+ *  Point this script at them (file IDs/URLs) via Script Properties — see
+ *  "CONFIG / COUNTERS" below. This app never writes into these files.
+ *
+ * CONFIG / COUNTERS (Script Properties, NOT a sheet):
+ *  ItemMasterSheetId, SchemeMasterSheetId, WorkOrderMasterSheetId, and the
+ *  running HR No. sequence numbers all live in this project's Script
+ *  Properties instead of a spreadsheet tab, so they never touch the
+ *  Transactions workbook at all.
+ *  - To set the master file IDs: run the one-time setupMasterFileIds()
+ *    function below (fill in the IDs/URLs first), OR add them directly
+ *    under Apps Script editor > Project Settings (gear icon) > Script
+ *    Properties, using keys cfg_ItemMasterSheetId, cfg_SchemeMasterSheetId,
+ *    cfg_WorkOrderMasterSheetId.
+ *  - Counters are stored under keys like ctr_ISS_2026, ctr_RET_2026, etc.,
+ *    and need no manual setup.
  *
  * YEAR-END ARCHIVING:
  *  Every time the script runs, it checks whether the calendar year has
@@ -32,13 +45,23 @@
  * Sheets used in THIS workbook (auto-created on first run if missing):
  *   Transactions        - current year's transactions, one row per item line
  *   Transactions_<year> - previous years, created automatically at rollover
- *   Counters            - running sequence numbers for HR No.
- *   Config              - file IDs of external master spreadsheets
  */
 
 const TXN_SHEET = 'Transactions';
-const COUNTER_SHEET = 'Counters';
-const CONFIG_SHEET = 'Config';
+const CONFIG_PREFIX = 'cfg_';
+const COUNTER_PREFIX = 'ctr_';
+
+/**
+ * ONE-TIME SETUP: fill in your three master data file IDs/URLs below, then
+ * open this project in the Apps Script editor, pick "setupMasterFileIds"
+ * from the function dropdown at the top, and click Run once. (Re-run any
+ * time you need to change one of these.)
+ */
+function setupMasterFileIds() {
+  setConfigValue_('ItemMasterSheetId', 'PASTE_ITEM_MASTER_ID_OR_URL_HERE');
+  setConfigValue_('SchemeMasterSheetId', 'PASTE_SCHEME_MASTER_ID_OR_URL_HERE');
+  setConfigValue_('WorkOrderMasterSheetId', 'PASTE_WORK_ORDER_MASTER_ID_OR_URL_HERE');
+}
 
 const TXN_HEADERS = [
   'SlNo', 'Date', 'TransactionType', 'HRNo', 'SchemeCode', 'SchemeName',
@@ -62,15 +85,6 @@ function ensureSheet_(name, headers) {
 }
 
 function init_() {
-  ensureSheet_(COUNTER_SHEET, ['Key', 'LastSeq']);
-  const cfg = ensureSheet_(CONFIG_SHEET, ['Key', 'Value']);
-  if (cfg.getLastRow() < 2) {
-    cfg.getRange(2, 1, 3, 2).setValues([
-      ['ItemMasterSheetId', ''],
-      ['SchemeMasterSheetId', ''],
-      ['WorkOrderMasterSheetId', '']
-    ]);
-  }
   archiveYearIfNeeded_();
   ensureSheet_(TXN_SHEET, TXN_HEADERS);
 }
@@ -78,13 +92,12 @@ function init_() {
 /* ---------------- Year-end archiving ---------------- */
 
 function archiveYearIfNeeded_() {
-  const cfgSh = ensureSheet_(CONFIG_SHEET, ['Key', 'Value']);
   const map = getConfigMap_();
   const currentYear = new Date().getFullYear();
   const trackedYear = Number(map['CurrentTxnYear']) || 0;
 
   if (!trackedYear) {
-    setConfigValue_(cfgSh, 'CurrentTxnYear', String(currentYear));
+    setConfigValue_('CurrentTxnYear', String(currentYear));
     return;
   }
   if (trackedYear >= currentYear) return;
@@ -97,26 +110,21 @@ function archiveYearIfNeeded_() {
       liveSheet.setName(archiveName);
     }
   }
-  setConfigValue_(cfgSh, 'CurrentTxnYear', String(currentYear));
+  setConfigValue_('CurrentTxnYear', String(currentYear));
 }
 
-function setConfigValue_(sh, key, value) {
-  const data = sh.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) { sh.getRange(i + 1, 2).setValue(value); return; }
-  }
-  sh.appendRow([key, value]);
-}
+/* ---------------- Config (Script Properties) ---------------- */
 
-/* ---------------- Config / external master sheets ---------------- */
+function setConfigValue_(key, value) {
+  PropertiesService.getScriptProperties().setProperty(CONFIG_PREFIX + key, value);
+}
 
 function getConfigMap_() {
-  const sh = ensureSheet_(CONFIG_SHEET, ['Key', 'Value']);
-  const data = sh.getDataRange().getValues();
+  const props = PropertiesService.getScriptProperties().getProperties();
   const map = {};
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0]) map[String(data[i][0]).trim()] = String(data[i][1] || '').trim();
-  }
+  Object.keys(props).forEach(function (k) {
+    if (k.indexOf(CONFIG_PREFIX) === 0) map[k.substring(CONFIG_PREFIX.length)] = props[k];
+  });
   return map;
 }
 
@@ -222,18 +230,14 @@ function pad_(n, width) {
   return n;
 }
 
+/* ---------------- Counters (Script Properties) ---------------- */
+
 function nextSeq_(key) {
-  const sh = ensureSheet_(COUNTER_SHEET, ['Key', 'LastSeq']);
-  const data = sh.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) {
-      const next = Number(data[i][1]) + 1;
-      sh.getRange(i + 1, 2).setValue(next);
-      return next;
-    }
-  }
-  sh.appendRow([key, 1]);
-  return 1;
+  const props = PropertiesService.getScriptProperties();
+  const propKey = COUNTER_PREFIX + key;
+  const next = (Number(props.getProperty(propKey)) || 0) + 1;
+  props.setProperty(propKey, String(next));
+  return next;
 }
 
 /**
