@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BD-I Store Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{
+  --desk:#202A3A;
+  --desk-raise:#29354C;
+  --paper:#F2EBD7;
+  --sheet:#F8F3E4;
+  --ink:#1E2940;
+  --ink-mut:#5C6677;
+  --rule:#CDD3DE;
+  --rule-strong:#A9B3C6;
+  --margin:#B23A2A;
+  --receipt:#2F6F4A;
+  --shadow:0 16px 34px -18px rgba(8,13,26,.6);
+  --disp:'Barlow Condensed',sans-serif;
+  --body:'Public Sans',sans-serif;
+  --stamp:'Special Elite',monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+.hidden{display:none!important;}
+body{
+  background:radial-gradient(1100px 520px at 78% -8%, #2B3852 0%, rgba(32,42,58,0) 62%), var(--desk);
+  color:var(--ink);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:76px;
+  min-height:100vh;
+}
+h1,h2,h3,.display{font-family:var(--disp);}
+.mono{font-family:var(--stamp);}
+.muted{color:var(--ink-mut);}
+a.link{color:var(--ink); text-decoration:underline; text-underline-offset:2px; font-weight:600;}
+
+/* Top bar — the register's cover edge */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  background:var(--desk-raise); color:var(--sheet);
+  border-bottom:2px solid var(--margin);
+  padding:14px 18px 12px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.topbar .brand{display:flex; flex-direction:column; gap:2px;}
+.topbar .brand .line1{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#9AA6BD; font-weight:600;}
+.topbar .brand .line2{font-family:var(--disp); font-weight:600; font-size:20px; letter-spacing:.03em; text-transform:uppercase;}
+.sync-dot{width:9px; height:9px; border-radius:50%; background:#6FA287; box-shadow:0 0 0 3px rgba(111,162,135,.25);}
+.sync-dot.off{background:#C66B4F; box-shadow:0 0 0 3px rgba(198,107,79,.25);}
+
+/* Views */
+.view{display:none; padding:18px 14px 28px; max-width:720px; margin:0 auto;}
+.view.active{display:block;}
+
+/* The open register sheet */
+.sheet{
+  position:relative;
+  background-color:var(--sheet);
+  background-image:repeating-linear-gradient(to bottom, transparent 0 27px, rgba(30,41,64,.035) 27px 28px);
+  border:1px solid #E2D9BC;
+  border-radius:2px;
+  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.6);
+  padding:26px 18px 26px 46px;
+  color:var(--ink);
+  animation:sheetIn .34s ease-out both;
+}
+.sheet::before{
+  content:''; position:absolute; left:24px; top:0; bottom:0; width:2px;
+  background:var(--margin);
+  transform-origin:top;
+  animation:ruleDown .45s ease-out .06s both;
+}
+.sheet-edge{
+  position:absolute; left:4px; top:18px; z-index:1;
+  writing-mode:vertical-rl;
+  font-family:var(--stamp); font-size:10px; letter-spacing:.3em;
+  color:var(--margin); opacity:.85;
+}
+@keyframes sheetIn{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+@keyframes ruleDown{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+
+/* Sheet header */
+.sheet-head{padding:4px 0 16px; border-bottom:1.5px solid var(--rule-strong); margin-bottom:2px;}
+.sheet-kicker{font-family:var(--stamp); font-size:12.5px; color:var(--margin); letter-spacing:.03em;}
+.sheet-title{font-family:var(--disp); font-weight:700; font-size:36px; line-height:.95; text-transform:uppercase; letter-spacing:.01em; margin:8px 0 10px;}
+.sheet-sub{font-size:12.5px; color:var(--ink-mut); max-width:54ch; line-height:1.5;}
+
+/* Form sections */
+.fld-block{margin-top:18px; padding-top:16px; border-top:1px solid var(--rule);}
+.fld-block:first-of-type{margin-top:0; padding-top:0; border-top:none;}
+.fld-block > *{margin-top:16px;}
+.fld-block > *:first-child{margin-top:0;}
+.fld-title{
+  display:flex; align-items:center; gap:10px;
+  font-family:var(--disp); font-weight:600; font-size:14px;
+  text-transform:uppercase; letter-spacing:.16em; color:var(--ink);
+  margin:0;
+}
+.fld-title::after{content:''; flex:1; height:1px; background:var(--rule);}
+
+/* Fields */
+.field label{margin:0 0 5px;}
+.two-col{display:grid; grid-template-columns:1fr 1fr; gap:16px 14px;}
+
+label{display:block; font-size:11px; font-weight:600; color:var(--ink-mut); text-transform:uppercase; letter-spacing:.07em; margin:14px 0 6px;}
+label:first-child{margin-top:0;}
+.opt{text-transform:none; font-weight:500; letter-spacing:0; color:var(--ink-mut); font-size:11px;}
+.check-label{display:flex; align-items:center; gap:8px; flex-direction:row; text-transform:none; font-weight:500; font-size:13.5px; color:var(--ink);}
+
+/* Scheme code suggestions — a leaf from the register's scheme index */
+.scheme-field{position:relative;}
+.scheme-suggest{
+  position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:12;
+  background:#FBF6E8; border:1px solid #E2D9BC; border-radius:2px;
+  box-shadow:0 12px 24px -12px rgba(8,13,26,.4);
+  max-height:252px; overflow-y:auto;
+  display:none;
+}
+.scheme-suggest.open{display:block;}
+.sc-head{
+  position:sticky; top:0; z-index:1;
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:9px 10px 8px; border-bottom:1.5px solid var(--rule-strong);
+  background:#FBF6E8;
+}
+.sc-head .sc-title{font-family:var(--stamp); font-size:12px; color:var(--margin); letter-spacing:.04em;}
+.sc-head .sc-count{font-family:var(--stamp); font-size:11px; color:var(--ink-mut);}
+.sc-row{
+  position:relative; display:flex; align-items:center; gap:8px;
+  padding:9px 10px; border-bottom:1px solid var(--rule); cursor:pointer;
+}
+.sc-row::before{
+  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
+  background:var(--margin); opacity:0; transition:opacity .12s ease;
+}
+.sc-row:last-child{border-bottom:none;}
+.sc-row:hover, .sc-row.active{background:#FFFDF5;}
+.sc-row:hover::before, .sc-row.active::before{opacity:1;}
+.sc-row .sc-code{
+  flex-shrink:0; min-width:92px;
+  font-family:var(--stamp); font-size:12px; color:var(--margin);
+}
+.sc-row .sc-name{
+  flex:1; min-width:0;
+  font-size:12.5px; line-height:1.45; color:var(--ink);
+  overflow-wrap:break-word;
+}
+.sc-empty{padding:12px 10px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
+
+input[type=text], input[type=date], input[type=number], textarea, select{
+  width:100%; padding:9px 2px;
+  border:none; border-bottom:1.5px solid var(--rule-strong);
+  border-radius:0; background:transparent;
+  font-size:15px; font-family:var(--body); color:var(--ink);
+}
+input::placeholder, textarea::placeholder{color:#9AA3B3;}
+textarea{min-height:42px; resize:vertical; line-height:1.5;}
+input:focus, textarea:focus, select:focus{
+  outline:2px solid var(--ink); outline-offset:3px; border-bottom-color:var(--ink);
+}
+button:focus-visible, a:focus-visible{
+  outline:2px solid var(--margin); outline-offset:2px;
+}
+
+/* Transaction type — rubber stamps */
+.type-toggle{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.stamp{
+  cursor:pointer; text-align:center; padding:15px 10px 13px;
+  background:transparent;
+  border:2px solid var(--rule-strong); border-radius:4px;
+  color:var(--ink-mut);
+  transition:transform .12s ease, background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.stamp .stamp-word{display:block; font-family:var(--stamp); font-size:20px; line-height:1.1; text-transform:uppercase; letter-spacing:.04em;}
+.stamp .stamp-sub{display:block; margin-top:7px; font-family:var(--body); font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.1em;}
+.stamp:hover{border-color:var(--ink); color:var(--ink);}
+.stamp:active{transform:translateY(1px);}
+.stamp.issue.active{background:var(--margin); border-color:var(--margin); color:#FBE9E3; transform:rotate(-2deg); box-shadow:0 3px 0 rgba(178,58,42,.4);}
+.stamp.receipt.active{background:var(--receipt); border-color:var(--receipt); color:#EAF4EC; transform:rotate(-2deg); box-shadow:0 3px 0 rgba(47,111,74,.4);}
+
+/* Work-order finder */
+.wo-finder{border:1px solid var(--rule); border-radius:3px; padding:11px; background:#FFFDF5;}
+.wo-finder-row{display:flex; gap:10px;}
+.wo-finder-row select{
+  flex:0 0 82px; padding:9px 6px; font-size:13px; text-align:center;
+  border:1px solid var(--rule-strong); border-radius:3px; background:#FFFDF5;
+}
+.wo-search-wrap{position:relative; flex:1; min-width:0;}
+.wo-search-wrap svg{
+  position:absolute; left:9px; top:50%; transform:translateY(-50%);
+  width:15px; height:15px; color:var(--ink-mut); pointer-events:none;
+}
+.wo-search-wrap input{padding-left:30px;}
+.wo-results{max-height:250px; overflow-y:auto; margin-top:6px;}
+.wo-results:empty{margin-top:0;}
+.wo-result{
+  display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid var(--rule); padding:11px 2px;
+  cursor:pointer;
+}
+.wo-result:last-child{border-bottom:none;}
+.wo-result:hover .agency{color:var(--margin);}
+.wo-result-text{min-width:0; flex:1;}
+.wo-result .agency{font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.wo-result .meta{font-size:11.5px; color:var(--ink-mut); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.wo-result .arrow{flex-shrink:0; color:var(--ink); width:15px; height:15px;}
+.wo-note{font-size:12px; color:var(--ink-mut); padding:8px 2px 2px;}
+
+/* Item lines — ledger rows */
+.item-line{
+  border:1px solid var(--rule-strong); border-radius:3px;
+  background:#FFFDF5; box-shadow:0 1px 0 rgba(30,41,64,.05);
+  padding:12px 12px 14px; margin-top:12px; position:relative;
+}
+#itemLines .item-line:first-child{margin-top:0;}
+.item-line::before{content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--rule-strong);}
+.item-line-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;}
+.item-line-head .idx{font-family:var(--stamp); font-size:12px; color:var(--margin); letter-spacing:.04em; text-transform:uppercase;}
+.item-line .remove-line{background:none; border:none; color:var(--ink-mut); font-size:20px; line-height:1; padding:0 4px; cursor:pointer;}
+.item-line .remove-line:hover{color:var(--margin);}
+.item-line-grid{display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-top:10px;}
+.item-line-grid label{margin-top:0;}
+.item-line-head + label{margin-top:8px;}
+
+.add-line-btn{
+  width:100%; padding:11px;
+  border:1.5px dashed var(--rule-strong); border-radius:3px; background:transparent;
+  font-family:var(--body); font-weight:600; font-size:13px; color:var(--ink);
+  cursor:pointer; letter-spacing:.03em;
+}
+.add-line-btn:hover{border-color:var(--ink);}
+.add-line-btn .plus{font-family:var(--stamp); color:var(--margin); font-size:15px; margin-right:2px;}
+
+/* Save */
+.sheet-foot{margin-top:24px;}
+.sheet-foot .primary{margin-top:0;}
+.sheet-foot .hint{margin-top:10px; text-align:center; font-size:11.5px;}
+button.primary{
+  width:100%; padding:15px 14px;
+  border:1px solid var(--ink); border-radius:3px; background:var(--ink); color:var(--sheet);
+  font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.12em;
+  text-transform:uppercase; cursor:pointer;
+}
+button.primary:hover{background:#16203A;}
+button.primary:disabled{opacity:.55; cursor:default;}
+button.secondary{
+  width:100%; padding:11px; border:1.5px dashed var(--rule-strong); border-radius:3px; background:transparent;
+  color:var(--ink); font-weight:600; font-size:13.5px; cursor:pointer; margin-top:12px;
+}
+button.ghost{
+  padding:8px 13px; border:1px solid var(--rule-strong); border-radius:3px; background:transparent;
+  color:var(--ink); font-size:12.5px; font-weight:600; cursor:pointer;
+}
+button.ghost:hover{border-color:var(--ink);}
+button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
+
+/* Save confirmation — fresh stamp on the desk */
+.confirm-banner:empty{display:none;}
+.confirm-banner{
+  border:2px dashed var(--receipt); border-radius:4px;
+  background:#E9F2EA; color:#24492F;
+  padding:16px 18px 15px; margin-bottom:16px;
+  font-size:13px; font-weight:600; line-height:1.5; position:relative;
+  animation:stamp .3s cubic-bezier(.2,1.4,.4,1) both;
+}
+.confirm-banner::before{
+  content:'RECORDED'; position:absolute; right:12px; top:9px;
+  font-family:var(--stamp); font-size:11px; letter-spacing:.18em; color:inherit; opacity:.45;
+}
+.confirm-banner.issue{background:#F7E8E2; border-color:var(--margin); color:#6E2A1C;}
+.confirm-banner .num{
+  font-family:var(--stamp); font-weight:400; font-size:24px; line-height:1.2;
+  display:block; margin-top:6px; letter-spacing:.03em; transform:rotate(-.5deg);
+}
+.confirm-banner .note{margin-top:6px; font-weight:400;}
+@keyframes stamp{0%{transform:rotate(-3deg) scale(1.15); opacity:0}100%{transform:rotate(-.4deg) scale(1); opacity:1}}
+
+/* Shared blocks for other views */
+.card{
+  background:var(--sheet); border:1px solid #E2D9BC; border-radius:4px;
+  padding:18px; box-shadow:var(--shadow);
+  margin-bottom:16px;
+}
+.card h3{
+  margin:0 0 8px; font-size:13px; letter-spacing:.14em; color:var(--ink);
+  text-transform:uppercase; font-weight:600; font-family:var(--disp);
+}
+.card h3 + label{margin-top:0;}
+
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;}
+.stat{
+  background:var(--sheet); border:1px solid #E2D9BC; border-radius:4px;
+  padding:16px; box-shadow:var(--shadow);
+}
+.stat .label{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-mut); margin-bottom:8px; font-weight:600;}
+.stat .value{font-family:var(--disp); font-size:32px; font-weight:700; line-height:1;}
+.stat .sub{font-size:12px; color:var(--ink-mut); margin-top:4px;}
+
+.ticket{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--stamp); font-size:12px;
+  border:1.5px dashed var(--rule-strong); color:var(--ink-mut);
+  padding:3px 9px; border-radius:4px; background:transparent;
+  white-space:nowrap;
+}
+.ticket.issue{border-color:var(--margin); color:var(--margin);}
+.ticket.receipt{border-color:var(--receipt); color:var(--receipt);}
+
+.badge{
+  font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+  padding:3px 8px; border-radius:3px;
+}
+.badge.issue{background:rgba(178,58,42,.12); color:var(--margin);}
+.badge.receipt{background:rgba(47,111,74,.12); color:var(--receipt);}
+
+.txn-row{display:flex; justify-content:space-between; gap:10px; padding:12px 0; border-bottom:1px solid var(--rule);}
+.txn-row:last-child{border-bottom:none;}
+.txn-main{display:flex; flex-direction:column; gap:4px; min-width:0;}
+.txn-main .item{font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.txn-side{text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;}
+.txn-side .qty{font-family:var(--stamp); font-size:14px;}
+.txn-side .date{font-size:11px; color:var(--ink-mut);}
+
+.filter-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+.item-block{border-bottom:1px solid var(--rule); padding:14px 0;}
+.item-block:last-child{border-bottom:none;}
+.item-block-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+.item-block-head .code{font-family:var(--stamp); font-size:13px;}
+.item-block-head .desc{font-size:12.5px; color:var(--ink-mut);}
+.item-block > .desc{margin-bottom:8px;}
+.balance-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px;}
+.balance-grid .b{text-align:center; background:rgba(30,41,64,.05); border-radius:3px; padding:8px 4px;}
+.balance-grid .b .n{font-family:var(--stamp); font-size:14px;}
+.balance-grid .b .l{font-size:9.5px; text-transform:uppercase; color:var(--ink-mut); letter-spacing:.05em; margin-top:2px;}
+
+.empty-state{text-align:center; padding:36px 12px; color:var(--ink-mut); font-size:13.5px;}
+.empty-state .sig{font-family:var(--stamp); font-size:28px; color:var(--rule-strong); margin-bottom:8px;}
+
+.hint{font-size:12px; color:var(--ink-mut); margin-top:8px; line-height:1.5;}
+
+/* Bottom nav */
+.bottomnav{
+  position:fixed; bottom:0; left:0; right:0; z-index:30;
+  background:var(--desk-raise); border-top:1px solid #333F57;
+  display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+  box-shadow:0 -8px 24px -14px rgba(5,9,18,.7);
+}
+.bottomnav button{
+  flex:1; background:none; border:none; border-top:2px solid transparent;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:6px 2px; color:#8D98AD; cursor:pointer; font-family:var(--body);
+}
+.bottomnav button svg{width:20px; height:20px;}
+.bottomnav button span{font-size:10px; font-weight:600; letter-spacing:.04em;}
+.bottomnav button.active{color:var(--sheet); border-top-color:var(--margin);}
+
+.toast{
+  position:fixed; bottom:88px; left:50%; transform:translateX(-50%);
+  background:var(--ink); color:var(--sheet); padding:10px 18px; border-radius:4px; font-size:13px;
+  border:1px solid #39465F; z-index:50; opacity:0; transition:opacity .25s;
+  pointer-events:none;
+}
+.toast.show{opacity:1;}
+
+@media (prefers-reduced-motion: reduce){
+  .sheet, .sheet::before, .confirm-banner{animation:none!important;}
+  .stamp{transition:none!important;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="line1" id="storeLine1">Berhampore Division-I &middot; PHE</div>
+    <div class="line2" id="storeLine2">Store Register</div>
+  </div>
+  <div id="syncDot" class="sync-dot off" title="Not connected"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="view active" id="view-dashboard">
+  <div class="stat-grid">
+    <div class="stat">
+      <div class="label">Issued &middot; this month</div>
+      <div class="value" id="statIssuedQty">–</div>
+      <div class="sub" id="statIssuedLines">– vouchers</div>
+    </div>
+    <div class="stat">
+      <div class="label">Received &middot; this month</div>
+      <div class="value" id="statReceivedQty">–</div>
+      <div class="sub" id="statReceivedLines">– vouchers</div>
+    </div>
+  </div>
+  <div class="card hidden" id="pendingCard">
+    <h3>Awaiting voucher no.</h3>
+    <div class="hint" id="pendingText"></div>
+  </div>
+  <div class="card">
+    <h3>Recent activity</h3>
+    <div id="recentList"><div class="empty-state">Connect your sheet in Settings to see data.</div></div>
+  </div>
+</div>
+
+<!-- NEW ENTRY -->
+<div class="view" id="view-entry">
+  <div id="entryConfirm"></div>
+
+  <div class="sheet">
+    <div class="sheet-edge">BD-I &middot; STORE</div>
+
+    <header class="sheet-head">
+      <div class="sheet-kicker" id="sheetKicker">Berhampore Division-I &middot; PHE &middot; Store Register</div>
+      <h1 class="sheet-title">New entry</h1>
+      <div class="sheet-sub">Record an issue to an agency or a receipt into store against a work order. The HR/Back HR no. is generated when you save.</div>
+    </header>
+
+    <section class="fld-block">
+      <h2 class="fld-title">Transaction</h2>
+      <div class="type-toggle">
+        <button type="button" id="btnTypeIssue" class="stamp issue active" aria-pressed="true">
+          <span class="stamp-word">Issued</span><span class="stamp-sub">to agency</span>
+        </button>
+        <button type="button" id="btnTypeReceipt" class="stamp receipt" aria-pressed="false">
+          <span class="stamp-word">Received</span><span class="stamp-sub">into store</span>
+        </button>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label for="fDate">Date</label>
+          <input type="date" id="fDate">
+        </div>
+        <div class="field">
+          <label for="fVoucherNo">Voucher no. <span class="opt">(if known)</span></label>
+          <input type="text" id="fVoucherNo" placeholder="ISS/000024/2025-26">
+        </div>
+      </div>
+    </section>
+
+    <section class="fld-block">
+      <h2 class="fld-title">Identification</h2>
+      <div class="two-col">
+        <div class="field scheme-field">
+          <label for="fSchemeCode">Scheme code</label>
+          <input type="text" id="fSchemeCode" placeholder="e.g. SM/01013" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="schemeSuggest">
+          <div id="schemeSuggest" class="scheme-suggest"></div>
+        </div>
+        <div class="field">
+          <label for="fSchemeName">Scheme name</label>
+          <input type="text" id="fSchemeName" placeholder="Scheme name">
+        </div>
+      </div>
+      <datalist id="schemeList"></datalist>
+    </section>
+
+    <section class="fld-block">
+      <h2 class="fld-title">Work details</h2>
+      <div class="field">
+        <label for="woSearch">Find work order <span class="opt">(optional shortcut)</span></label>
+        <div class="wo-finder">
+          <div class="wo-finder-row">
+            <select id="woYear"></select>
+            <div class="wo-search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+              <input type="text" id="woSearch" placeholder="Search agency or W/O no.">
+            </div>
+          </div>
+          <div id="woResults" class="wo-results"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="fAgency">Agency name &amp; address</label>
+        <textarea id="fAgency" placeholder="e.g. Jogmaya Engineering"></textarea>
+      </div>
+      <div class="field">
+        <label for="fWorkOrder">Work order no. &amp; date</label>
+        <input type="text" id="fWorkOrder" placeholder="e.g. W/O NO. 1247/BD-I DATED 30-10-2025">
+      </div>
+      <div class="field">
+        <label for="fNameOfWork">Name of work</label>
+        <textarea id="fNameOfWork" placeholder="Full description of the work / period"></textarea>
+      </div>
+      <div class="two-col">
+        <div class="field"><label for="fOfficeOrder">Office order no.</label><input type="text" id="fOfficeOrder"></div>
+        <div class="field"><label for="fChallan">Road challan no.</label><input type="text" id="fChallan"></div>
+      </div>
+    </section>
+
+    <section class="fld-block">
+      <h2 class="fld-title">Item lines</h2>
+      <div id="itemLines"></div>
+      <button type="button" class="add-line-btn" id="btnAddLine"><span class="plus">+</span>Add item line</button>
+    </section>
+
+    <footer class="sheet-foot">
+      <button type="button" class="primary" id="btnSubmit">Record entry</button>
+      <div class="hint">HR/Back HR no. is generated automatically. The voucher no. comes from the separate online system — add or update it any time from Reports.</div>
+    </footer>
+  </div>
+</div>
+
+<!-- STOCK REGISTER -->
+<div class="view" id="view-register">
+  <div class="card">
+    <h3>Stock Register</h3>
+    <div class="filter-grid">
+      <div><label>From</label><input type="date" id="regFrom"></div>
+      <div><label>To</label><input type="date" id="regTo"></div>
+    </div>
+    <label>Item code (optional)</label>
+    <input type="text" id="regItem" list="itemList" placeholder="Leave blank for all items">
+    <datalist id="itemList"></datalist>
+    <button type="button" class="primary" id="btnGenerateRegister">Generate register</button>
+  </div>
+  <div class="card hidden" id="registerResults">
+    <h3>Balances</h3>
+    <div id="registerBody"></div>
+  </div>
+</div>
+
+<!-- REPORTS -->
+<div class="view" id="view-reports">
+  <div class="card">
+    <h3>Reports</h3>
+    <div class="filter-grid">
+      <div><label>From</label><input type="date" id="repFrom"></div>
+      <div><label>To</label><input type="date" id="repTo"></div>
+    </div>
+    <label>Transaction type</label>
+    <select id="repType">
+      <option value="">All</option>
+      <option value="Issue">Issue</option>
+      <option value="Receipt">Receipt</option>
+    </select>
+    <label>Scheme code</label>
+    <input type="text" id="repScheme" list="schemeList" placeholder="Leave blank for all schemes">
+    <label>Search (agency, work, item, HR/voucher no.)</label>
+    <input type="text" id="repSearch" placeholder="Free text search">
+    <label class="check-label">
+      <input type="checkbox" id="repNoVoucher"> Only show lines missing a voucher no.
+    </label>
+    <button type="button" class="primary" id="btnRunReport">Run report</button>
+    <button type="button" class="secondary hidden" id="btnExportCsv">Export CSV</button>
+  </div>
+  <div class="card hidden" id="reportResults">
+    <h3>Results <span class="muted mono" id="reportCount" style="font-weight:400; text-transform:none;"></span></h3>
+    <div id="reportBody"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="view" id="view-settings">
+  <div class="card">
+    <h3>Connect your Google Sheet</h3>
+    <label>Apps Script Web App URL</label>
+    <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <button type="button" class="primary" id="btnSaveUrl">Save & test connection</button>
+    <div class="hint" id="settingsStatus"></div>
+  </div>
+  <div class="card">
+    <h3>Register details</h3>
+    <label for="officeName">Office / division name</label>
+    <input type="text" id="officeName" placeholder="e.g. Berhampore Division-I · PHE">
+    <label for="storeName">Store name</label>
+    <input type="text" id="storeName" placeholder="e.g. Store Register">
+    <div class="hint">Shown in the top bar, on new entry sheets, and in the browser tab.</div>
+    <button type="button" class="primary" id="btnSaveStoreName">Save details</button>
+  </div>
+  <div class="card">
+    <h3>How it's wired</h3>
+    <div class="hint">
+      This page is a static site with no server of its own. It talks directly to a Google Apps Script
+      web app deployed on your Google account, which reads and writes your Google Sheet. Your data
+      never passes through any third-party server.
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="bottomnav">
+  <button class="nav-btn active" data-view="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="nav-btn" data-view="entry">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    <span>New Entry</span>
+  </button>
+  <button class="nav-btn" data-view="register">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z" stroke-linejoin="round"/><path d="M8 9h8M8 13h8M8 17h5" stroke-linecap="round"/></svg>
+    <span>Register</span>
+  </button>
+  <button class="nav-btn" data-view="reports">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V9M12 19V5M19 19v-6" stroke-linecap="round"/></svg>
+    <span>Reports</span>
+  </button>
+  <button class="nav-btn" data-view="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
+    <span>Settings</span>
+  </button>
+</div>
+
+<script>
+/* ---------------- Config / storage ---------------- */
+const CFG_KEY = 'bdi_store_script_url';
+const STORE_NAME_KEY = 'bdi_store_name';
+const OFFICE_NAME_KEY = 'bdi_office_name';
+let SCRIPT_URL = localStorage.getItem(CFG_KEY) || '';
+let STORE_NAME = localStorage.getItem(STORE_NAME_KEY) || 'Store Register';
+let OFFICE_NAME = localStorage.getItem(OFFICE_NAME_KEY) || 'Berhampore Division-I \u00B7 PHE';
+let META = { items: [], schemes: [] };
+let currentType = 'Issue';
+let lineCounter = 0;
+const $ = id => document.getElementById(id);
+
+function applyStoreName(){
+  const name = STORE_NAME.trim() || 'Store Register';
+  const office = OFFICE_NAME.trim() || 'Berhampore Division-I \u00B7 PHE';
+  $('storeLine1').textContent = office;
+  $('storeLine2').textContent = name;
+  $('sheetKicker').textContent = office + ' \u00B7 ' + name;
+  document.title = 'BD-I \u00B7 ' + name;
+}
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------------- Navigation ---------------- */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    $('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='dashboard') loadDashboard();
+  });
+});
+
+/* ---------------- API helper ---------------- */
+async function apiGet(action, params={}){
+  if(!SCRIPT_URL){ toast('Set your Apps Script URL in Settings first'); throw new Error('no url'); }
+  const url = new URL(SCRIPT_URL);
+  url.searchParams.set('action', action);
+  Object.entries(params).forEach(([k,v])=>{ if(v) url.searchParams.set(k,v); });
+  const res = await fetch(url.toString());
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+async function apiPost(action, body={}){
+  if(!SCRIPT_URL){ toast('Set your Apps Script URL in Settings first'); throw new Error('no url'); }
+  const res = await fetch(SCRIPT_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'}, // avoids CORS preflight against Apps Script
+    body: JSON.stringify({ action, ...body })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+
+/* ---------------- Settings ---------------- */
+$('scriptUrl').value = SCRIPT_URL;
+$('officeName').value = OFFICE_NAME;
+$('storeName').value = STORE_NAME;
+$('btnSaveStoreName').addEventListener('click', ()=>{
+  OFFICE_NAME = $('officeName').value.trim();
+  STORE_NAME = $('storeName').value.trim();
+  localStorage.setItem(OFFICE_NAME_KEY, OFFICE_NAME);
+  localStorage.setItem(STORE_NAME_KEY, STORE_NAME);
+  applyStoreName();
+  toast('Details saved');
+});
+$('btnSaveUrl').addEventListener('click', async ()=>{
+  const val = $('scriptUrl').value.trim();
+  SCRIPT_URL = val;
+  localStorage.setItem(CFG_KEY, val);
+  const status = $('settingsStatus');
+  status.textContent = 'Testing connection...';
+  try{
+    await loadMeta();
+    populateYearSelect();
+    $('syncDot').classList.remove('off');
+    status.textContent = 'Connected. Item and scheme lists loaded.';
+    toast('Connected to your sheet');
+    loadDashboard();
+  }catch(err){
+    $('syncDot').classList.add('off');
+    status.textContent = 'Could not connect: ' + err.message;
+  }
+});
+
+async function loadMeta(){
+  const data = await apiGet('meta');
+  META = data;
+  const schemeList = $('schemeList');
+  schemeList.innerHTML = META.schemes.map(s=>`<option value="${escapeHtml(s.schemeCode)}">${escapeHtml(s.schemeName)}</option>`).join('');
+  const itemList = $('itemList');
+  itemList.innerHTML = META.items.map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description)}</option>`).join('');
+}
+
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(d){
+  const dt = new Date(d);
+  if(isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+/* ---------------- Dashboard ---------------- */
+async function loadDashboard(){
+  if(!SCRIPT_URL) return;
+  try{
+    const d = await apiGet('dashboard');
+    $('statIssuedQty').textContent = d.monthIssuedQty;
+    $('statIssuedLines').textContent = d.monthIssuedLines + ' line(s)';
+    $('statReceivedQty').textContent = d.monthReceivedQty;
+    $('statReceivedLines').textContent = d.monthReceivedLines + ' line(s)';
+    const pendingCard = $('pendingCard');
+    if(d.pendingVoucher > 0){
+      pendingCard.classList.remove('hidden');
+      $('pendingText').innerHTML =
+        `${d.pendingVoucher} line(s) don't have a voucher no. yet. Go to <b>Reports</b>, run a search, and tap "+ Add voucher no." on any row.`;
+    } else {
+      pendingCard.classList.add('hidden');
+    }
+    const list = $('recentList');
+    if(!d.recent.length){
+      list.innerHTML = '<div class="empty-state">No transactions yet.</div>';
+    } else {
+      list.innerHTML = d.recent.map(r=>`
+        <div class="txn-row">
+          <div class="txn-main">
+            <div class="item">${escapeHtml(r.ItemDescription)}</div>
+            <span class="ticket ${r.TransactionType.toLowerCase()}">${escapeHtml(r.HRNo)}</span>
+          </div>
+          <div class="txn-side">
+            <span class="qty">${r.Qty} ${escapeHtml(r.Unit)}</span>
+            <span class="date">${fmtDate(r.Date)}</span>
+          </div>
+        </div>`).join('');
+    }
+  }catch(err){ /* silent on dashboard */ }
+}
+
+/* ---------------- New Entry ---------------- */
+$('fDate').valueAsDate = new Date();
+
+function clientYear(dateStr){
+  const d = new Date(dateStr || Date.now());
+  return d.getFullYear();
+}
+function populateYearSelect(){
+  const sel = $('woYear');
+  const current = clientYear($('fDate').value);
+  const years = new Set(META.workOrderYears || []);
+  years.add(String(current));
+  sel.innerHTML = Array.from(years).sort().reverse()
+    .map(y=>`<option value="${y}" ${Number(y)===current?'selected':''}>${y}</option>`).join('');
+}
+
+let woSearchTimer = null;
+$('woSearch').addEventListener('input', ()=>{
+  clearTimeout(woSearchTimer);
+  woSearchTimer = setTimeout(runWoSearch, 350);
+});
+$('woYear').addEventListener('change', runWoSearch);
+
+async function runWoSearch(){
+  const q = $('woSearch').value.trim();
+  const year = $('woYear').value;
+  const results = $('woResults');
+  if(!q){ results.innerHTML=''; return; }
+  try{
+    const data = await apiGet('workOrders', { year, q });
+    if(!data.rows || !data.rows.length){
+      results.innerHTML = `<div class="wo-note">${data.note || 'No matches in ' + year + '.'}</div>`;
+      return;
+    }
+    results.innerHTML = data.rows.map((r,i)=>`
+      <div class="wo-result" data-i="${i}">
+        <div class="wo-result-text">
+          <div class="agency">${escapeHtml(r.AgencyName||'')}</div>
+          <div class="meta">${escapeHtml(r.WorkOrderNo||'')} &middot; ${escapeHtml(r.NameOfWork||'').slice(0,60)}${(r.NameOfWork||'').length>60?'…':''}</div>
+        </div>
+        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>`).join('');
+    results.querySelectorAll('.wo-result').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const r = data.rows[Number(el.dataset.i)];
+        $('fAgency').value = r.AgencyName || '';
+        $('fWorkOrder').value = [r.WorkOrderNo, r.WorkOrderDate ? ('DATED ' + r.WorkOrderDate) : ''].filter(Boolean).join(' ');
+        $('fNameOfWork').value = r.NameOfWork || '';
+        results.innerHTML = '';
+        $('woSearch').value = '';
+        toast('Filled from work order master');
+      });
+    });
+  }catch(err){ results.innerHTML = `<div class="wo-note">${err.message}</div>`; }
+}
+
+const fSchemeCode = $('fSchemeCode');
+const fSchemeName = $('fSchemeName');
+const schemeSuggest = $('schemeSuggest');
+
+function setSchemeOpen(open){
+  schemeSuggest.classList.toggle('open', open);
+  fSchemeCode.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function selectScheme(code){
+  fSchemeCode.value = code;
+  const match = META.schemes.find(s=>s.schemeCode===code);
+  fSchemeName.value = match ? match.schemeName : '';
+  setSchemeOpen(false);
+}
+
+const scHead = count => `<div class="sc-head">
+  <span class="sc-title">Scheme index</span>
+  ${count ? `<span class="sc-count">${count} ${count===1?'match':'matches'}</span>` : ''}
+</div>`;
+
+function renderSchemeSuggest(){
+  schemeSuggest.innerHTML = '';
+  const q = fSchemeCode.value.trim().toLowerCase();
+  if(!q || !META.schemes.length){ setSchemeOpen(false); return; }
+  const matches = META.schemes
+    .filter(s=>s.schemeCode.toLowerCase().includes(q) || (s.schemeName||'').toLowerCase().includes(q))
+    .slice(0, 30);
+  schemeSuggest.innerHTML = matches.length
+    ? scHead(matches.length) + matches.map(s=>`
+      <div class="sc-row" data-code="${escapeHtml(s.schemeCode)}">
+        <span class="sc-code">${escapeHtml(s.schemeCode)}</span>
+        <span class="sc-name">${escapeHtml(s.schemeName||'')}</span>
+      </div>`).join('')
+    : scHead() + `<div class="sc-empty">No schemes match “${escapeHtml(fSchemeCode.value.trim())}”. Check the code or leave it blank.</div>`;
+  setSchemeOpen(true);
+}
+
+fSchemeCode.addEventListener('input', ()=>{
+  const match = META.schemes.find(s=>s.schemeCode===fSchemeCode.value);
+  if(match) fSchemeName.value = match.schemeName;
+  renderSchemeSuggest();
+});
+fSchemeCode.addEventListener('focus', renderSchemeSuggest);
+fSchemeCode.addEventListener('blur', ()=>{
+  setTimeout(()=>setSchemeOpen(false), 120);
+});
+schemeSuggest.addEventListener('mousedown', (e)=>e.preventDefault());
+fSchemeCode.addEventListener('keydown', (e)=>{
+  if(!schemeSuggest.classList.contains('open')) return;
+  const rows = Array.from(schemeSuggest.querySelectorAll('.sc-row'));
+  if(!rows.length) return;
+  let idx = rows.indexOf(schemeSuggest.querySelector('.sc-row.active'));
+  if(e.key==='ArrowDown'){ e.preventDefault(); idx = (idx+1) % rows.length; }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); idx = (idx-1+rows.length) % rows.length; }
+  else if(e.key==='Enter' && idx > -1){ e.preventDefault(); selectScheme(rows[idx].dataset.code); return; }
+  else if(e.key==='Escape'){ e.preventDefault(); setSchemeOpen(false); return; }
+  else return;
+  rows.forEach(r=>r.classList.remove('active'));
+  rows[idx].classList.add('active');
+  if(rows[idx].offsetTop < schemeSuggest.scrollTop){
+    schemeSuggest.scrollTop = rows[idx].offsetTop;
+  } else if(rows[idx].offsetTop + rows[idx].offsetHeight > schemeSuggest.scrollTop + schemeSuggest.clientHeight){
+    schemeSuggest.scrollTop = rows[idx].offsetTop + rows[idx].offsetHeight - schemeSuggest.clientHeight;
+  }
+});
+schemeSuggest.addEventListener('click', (e)=>{
+  const row = e.target.closest('.sc-row');
+  if(!row) return;
+  selectScheme(row.dataset.code);
+});
+
+function setType(t){
+  currentType = t;
+  const issue = $('btnTypeIssue');
+  const receipt = $('btnTypeReceipt');
+  issue.classList.toggle('active', t==='Issue');
+  receipt.classList.toggle('active', t==='Receipt');
+  issue.setAttribute('aria-pressed', String(t==='Issue'));
+  receipt.setAttribute('aria-pressed', String(t==='Receipt'));
+}
+$('btnTypeIssue').addEventListener('click', ()=>setType('Issue'));
+$('btnTypeReceipt').addEventListener('click', ()=>setType('Receipt'));
+
+function renumberItemLines(){
+  document.querySelectorAll('#itemLines .item-line').forEach((div, i)=>{
+    div.querySelector('.idx').textContent = 'Item ' + (i+1);
+  });
+}
+
+function addItemLine(){
+  lineCounter++;
+  const id = lineCounter;
+  const div = document.createElement('div');
+  div.className = 'item-line';
+  div.dataset.id = id;
+  div.innerHTML = `
+    <div class="item-line-head">
+      <span class="idx">Item</span>
+      <button type="button" class="remove-line" aria-label="Remove line">&times;</button>
+    </div>
+    <label>Item code</label>
+    <input type="text" class="li-code" list="itemList" placeholder="e.g. MI/01078">
+    <label>Description</label>
+    <input type="text" class="li-desc" placeholder="Item description">
+    <div class="item-line-grid">
+      <div><label>Quantity</label><input type="number" class="li-qty" step="any" min="0"></div>
+      <div><label>Unit</label><input type="text" class="li-unit" placeholder="No(s). / Mtr."></div>
+    </div>`;
+  div.querySelector('.remove-line').addEventListener('click', ()=>{
+    div.remove();
+    renumberItemLines();
+  });
+  div.querySelector('.li-code').addEventListener('input', (e)=>{
+    const match = META.items.find(i=>i.itemCode===e.target.value);
+    if(match){
+      div.querySelector('.li-desc').value = match.description;
+      div.querySelector('.li-unit').value = match.unit;
+    }
+  });
+  $('itemLines').appendChild(div);
+  renumberItemLines();
+}
+$('btnAddLine').addEventListener('click', addItemLine);
+addItemLine();
+
+$('btnSubmit').addEventListener('click', async ()=>{
+  const lines = Array.from(document.querySelectorAll('.item-line')).map(div=>({
+    itemCode: div.querySelector('.li-code').value.trim(),
+    itemDescription: div.querySelector('.li-desc').value.trim(),
+    qty: div.querySelector('.li-qty').value,
+    unit: div.querySelector('.li-unit').value.trim()
+  })).filter(l=>l.itemCode && l.qty);
+
+  if(!lines.length){ toast('Add at least one item line with code & quantity'); return; }
+
+  const body = {
+    date: $('fDate').value,
+    transactionType: currentType,
+    schemeCode: $('fSchemeCode').value.trim(),
+    schemeName: $('fSchemeName').value.trim(),
+    agencyDetails: $('fAgency').value.trim(),
+    workOrderDetails: $('fWorkOrder').value.trim(),
+    nameOfWork: $('fNameOfWork').value.trim(),
+    officeOrderNo: $('fOfficeOrder').value.trim(),
+    roadChallanNo: $('fChallan').value.trim(),
+    voucherNo: $('fVoucherNo').value.trim(),
+    items: lines
+  };
+  const btn = $('btnSubmit');
+  btn.disabled = true; btn.textContent = 'Recording...';
+  try{
+    const res = await apiPost('addTransaction', body);
+    $('entryConfirm').innerHTML = `
+      <div class="confirm-banner ${currentType.toLowerCase()}">
+        Entry recorded &mdash; ${lines.length} item line(s)
+        <span class="num">${res.hrNo}${res.voucherNo ? ' &nbsp;|&nbsp; ' + res.voucherNo : ''}</span>
+        ${!res.voucherNo ? '<div class="note">No voucher no. yet — add it later from Reports.</div>' : ''}
+      </div>`;
+    toast('Entry recorded');
+    // reset form
+    $('fSchemeCode').value='';
+    $('fSchemeName').value='';
+    setSchemeOpen(false);
+    $('fAgency').value='';
+    $('fWorkOrder').value='';
+    $('fNameOfWork').value='';
+    $('fOfficeOrder').value='';
+    $('fChallan').value='';
+    $('fVoucherNo').value='';
+    $('itemLines').innerHTML='';
+    addItemLine();
+    loadMeta();
+  }catch(err){
+    toast('Error: ' + err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Record entry';
+  }
+});
+
+/* ---------------- Stock Register ---------------- */
+$('btnGenerateRegister').addEventListener('click', async ()=>{
+  const from = $('regFrom').value;
+  const to = $('regTo').value;
+  const itemCode = $('regItem').value.trim();
+  try{
+    const data = await apiGet('stockRegister', {from, to, itemCode});
+    const wrap = $('registerResults');
+    const body = $('registerBody');
+    wrap.classList.remove('hidden');
+    if(!data.items.length){
+      body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements in this range.</div>';
+      return;
+    }
+    body.innerHTML = data.items.map(it=>`
+      <div class="item-block">
+        <div class="item-block-head">
+          <span class="code">${escapeHtml(it.itemCode)}</span>
+          <span class="desc">${escapeHtml(it.unit)}</span>
+        </div>
+        <div class="desc">${escapeHtml(it.description)}</div>
+        <div class="balance-grid">
+          <div class="b"><div class="n">${it.opening}</div><div class="l">Opening</div></div>
+          <div class="b"><div class="n">${it.received}</div><div class="l">Received</div></div>
+          <div class="b"><div class="n">${it.issued}</div><div class="l">Issued</div></div>
+          <div class="b"><div class="n">${it.closing}</div><div class="l">Closing</div></div>
+        </div>
+        ${it.movements.map(m=>`
+          <div class="txn-row">
+            <div class="txn-main">
+              <span class="ticket ${m.type.toLowerCase()}">${escapeHtml(m.hrNo)}</span>
+            </div>
+            <div class="txn-side">
+              <span class="qty">${m.type==='Receipt'?'+':'-'}${m.qty}</span>
+              <span class="date">${fmtDate(m.date)}</span>
+            </div>
+          </div>`).join('')}
+      </div>`).join('');
+  }catch(err){ toast('Error: ' + err.message); }
+});
+
+/* ---------------- Reports ---------------- */
+let lastReportRows = [];
+$('btnRunReport').addEventListener('click', async ()=>{
+  const params = {
+    from: $('repFrom').value,
+    to: $('repTo').value,
+    type: $('repType').value,
+    schemeCode: $('repScheme').value.trim(),
+    q: $('repSearch').value.trim(),
+    noVoucherOnly: $('repNoVoucher').checked ? 'true' : ''
+  };
+  try{
+    const data = await apiGet('list', params);
+    lastReportRows = data.rows;
+    const wrap = $('reportResults');
+    wrap.classList.remove('hidden');
+    $('reportCount').textContent = data.count + ' line(s)';
+    $('btnExportCsv').classList.toggle('hidden', !data.count);
+    const body = $('reportBody');
+    if(!data.count){
+      body.innerHTML = '<div class="empty-state">No matching transactions.</div>';
+      return;
+    }
+    body.innerHTML = data.rows.map(r=>`
+      <div class="txn-row">
+        <div class="txn-main">
+          <div class="item">${escapeHtml(r.ItemDescription)}</div>
+          <span class="ticket ${r.TransactionType.toLowerCase()}">${escapeHtml(r.HRNo)}</span>
+          ${r.VoucherNo
+            ? `<span class="date">${escapeHtml(r.VoucherNo)}</span>`
+            : `<button type="button" class="ghost small add-voucher-btn" data-hr="${escapeHtml(r.HRNo)}">+ Add voucher no.</button>`}
+        </div>
+        <div class="txn-side">
+          <span class="badge ${r.TransactionType.toLowerCase()}">${r.TransactionType}</span>
+          <span class="qty">${r.Qty} ${escapeHtml(r.Unit)}</span>
+          <span class="date">${fmtDate(r.Date)}</span>
+        </div>
+      </div>`).join('');
+    document.querySelectorAll('.add-voucher-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const hrNo = btn.dataset.hr;
+        const voucherNo = window.prompt('Voucher no. for ' + hrNo + ':');
+        if(!voucherNo) return;
+        try{
+          const res = await apiPost('updateVoucher', { hrNo, voucherNo: voucherNo.trim() });
+          toast('Updated ' + res.updated + ' line(s)');
+          $('btnRunReport').click();
+        }catch(err){ toast('Error: ' + err.message); }
+      });
+    });
+  }catch(err){ toast('Error: ' + err.message); }
+});
+
+$('btnExportCsv').addEventListener('click', ()=>{
+  if(!lastReportRows.length) return;
+  const headers = Object.keys(lastReportRows[0]);
+  const csv = [headers.join(',')].concat(
+    lastReportRows.map(r=>headers.map(h=>`"${String(r[h]??'').replace(/"/g,'""')}"`).join(','))
+  ).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'store_report_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+});
+
+/* ---------------- Boot ---------------- */
+applyStoreName();
+if(SCRIPT_URL){
+  loadMeta().then(()=>{
+    $('syncDot').classList.remove('off');
+    populateYearSelect();
+    loadDashboard();
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>
