@@ -299,6 +299,90 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .stat .value{font-family:var(--disp); font-size:32px; font-weight:700; line-height:1;}
 .stat .sub{font-size:12px; color:var(--ink-mut); margin-top:4px;}
 
+/* Stock ledger — a ruled register sheet */
+.ledger{background:var(--paper); border-color:#DDD2B2;}
+.ledger-head{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+.ledger-stamp{font-family:var(--stamp); color:var(--margin); font-size:20px; letter-spacing:.05em; text-transform:uppercase;}
+.ledger-range{display:flex; align-items:center; gap:6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-mut); font-weight:700;}
+.ledger-range input{border:1px solid var(--rule-strong); border-radius:3px; background:#FFFDF5; padding:5px 7px; font-size:12px; color:var(--ink); font-family:var(--body);}
+.ledger-rule{height:2px; background:var(--ink); margin:12px 0 4px; position:relative;}
+.ledger-rule::after{content:''; position:absolute; left:0; right:0; top:3px; height:1px; background:var(--rule-strong);}
+
+.ldg-chart{margin-top:12px;}
+.ldg-head{display:grid; grid-template-columns:24px minmax(0,1.25fr) repeat(3,minmax(0,1fr)); column-gap:10px; padding:0 0 7px;}
+.ldg-head > span{font-size:10px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; color:var(--ink-mut); border-bottom:1.5px solid var(--rule-strong); padding-bottom:5px;}
+.ldg-head .rcv{color:var(--receipt);}
+.ldg-head .iss{color:var(--margin);}
+.ldg-head .stk{color:var(--ink);}
+
+.ldg-checkall{padding:8px 0 9px; border-bottom:1px solid var(--rule-strong);}
+.ldg-checkall label{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--ink); cursor:pointer;}
+.ldg-checkall input,.ldg-check input{appearance:none; width:15px; height:15px; border:1.5px solid var(--rule-strong); border-radius:2px; background:#FFFDF5; cursor:pointer; position:relative; flex-shrink:0;}
+.ldg-checkall input:checked,.ldg-checkall input:indeterminate,.ldg-check input:checked{border-color:var(--ink);}
+.ldg-checkall input:checked::after,.ldg-check input:checked::after{content:''; position:absolute; left:3px; top:1px; width:4px; height:8px; border:solid var(--ink); border-width:0 2px 2px 0; transform:rotate(42deg);}
+.ldg-checkall input:indeterminate::after{content:''; position:absolute; left:3px; top:6px; width:7px; border-bottom:2px solid var(--ink);}
+
+.ldg-row{display:grid; grid-template-columns:24px minmax(0,1.25fr) repeat(3,minmax(0,1fr)); column-gap:10px; align-items:center; border-bottom:1px solid rgba(30,41,64,.07);}
+.ldg-check{display:flex; align-items:center; padding:9px 0;}
+.ldg-id{display:flex; align-items:baseline; gap:7px; background:none; border:none; padding:9px 0; text-align:left; cursor:pointer; min-width:0; font-family:var(--body);}
+.ldg-code{font-family:var(--stamp); font-size:12.5px; color:var(--ink); flex-shrink:0;}
+.ldg-desc{font-size:12.5px; color:var(--ink-mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1;}
+.ldg-unit{font-size:10.5px; color:var(--ink-mut); opacity:.75; margin-left:5px; flex-shrink:0;}
+.ldg-id .chev{color:var(--rule-strong); font-size:11px; flex-shrink:0; margin-left:auto; transition:transform .15s ease;}
+.ldg-row.open .chev{color:var(--margin);}
+.ldg-row.off > .ldg-id .ldg-desc,.ldg-row.off > .ldg-id .ldg-code{opacity:.45;}
+.ldg-row.off .ldg-bar{display:none;}
+.ldg-row.off .ldg-num{opacity:.4;}
+
+.ldg-cell{display:flex; align-items:center; gap:6px; min-width:0; padding:9px 0;}
+.ldg-celabel{display:none; font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--ink-mut); min-width:52px;}
+.ldg-track{flex:1; height:12px; position:relative; min-width:18px;
+  background:repeating-linear-gradient(0deg, transparent 0 4px, rgba(30,41,64,.055) 4px 5px);}
+.ldg-track::before{content:''; position:absolute; left:0; right:0; bottom:0; height:1px; background:rgba(30,41,64,.28);}
+.ldg-bar{position:absolute; left:0; top:0; bottom:1px; border-radius:0 2px 2px 0; transition:width .18s ease;}
+.ldg-bar.rcv{background:var(--receipt);}
+.ldg-bar.iss{background:var(--margin);}
+.ldg-bar.stk{background:var(--ink);}
+.ldg-num{font-family:var(--disp); font-weight:600; font-size:12.5px; min-width:42px; text-align:right; font-variant-numeric:tabular-nums; line-height:1;}
+.ldg-num.rcv{color:var(--receipt);}
+.ldg-num.iss{color:var(--margin);}
+.ldg-num.stk{color:var(--ink);}
+
+.ldg-detail{grid-column:1/-1; padding:2px 0 14px;}
+.ldg-detail-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin:10px 0;}
+.ldg-detail-head .ldg-code{font-family:var(--stamp); font-size:13px; color:var(--margin);}
+.ldg-sum{font-size:12px; color:var(--ink-mut);}
+.ldg-cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px;}
+.mvm-card{background:#FFFDF5; border:1px solid var(--rule); border-left:3px solid var(--rule-strong); border-radius:3px; padding:10px 12px; display:flex; flex-direction:column; gap:6px;}
+.mvm-card.receipt{border-left-color:var(--receipt);}
+.mvm-card.issue{border-left-color:var(--margin);}
+.mvm-top{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.mvm-qty{font-family:var(--disp); font-weight:700; font-size:17px; line-height:1;}
+.mvm-qty.receipt{color:var(--receipt);}
+.mvm-qty.issue{color:var(--margin);}
+.mvm-unit{font-size:10px; color:var(--ink-mut); font-family:var(--body); font-weight:500;}
+.mvm-sub{display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--ink-mut);}
+.mvm-vch{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.mvm-agency{font-size:12px; color:var(--ink); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+@media (max-width:600px){
+  .ldg-head{display:none;}
+  .ldg-row{grid-template-columns:24px minmax(0,1fr); row-gap:3px; padding:9px 0;}
+  .ldg-row > *{padding:0;}
+  .ldg-check{grid-column:1; grid-row:1; align-self:start;}
+  .ldg-id{grid-column:2; grid-row:1;}
+  .ldg-cell{grid-column:2;}
+  .ldg-cell.rcv{grid-row:2;}
+  .ldg-cell.iss{grid-row:3;}
+  .ldg-cell.stk{grid-row:4;}
+  .ldg-celabel{display:block;}
+  .ldg-detail{grid-row:auto;}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .ldg-bar,.ldg-id .chev{transition:none;}
+}
+
 .ticket{
   display:inline-flex; align-items:center; gap:6px;
   font-family:var(--stamp); font-size:12px;
@@ -399,6 +483,20 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   <div class="card hidden" id="pendingCard">
     <h3>Awaiting voucher no.</h3>
     <div class="hint" id="pendingText"></div>
+  </div>
+  <div class="card ledger" id="ledgerCard">
+    <div class="ledger-head">
+      <span class="ledger-stamp">Stock ledger</span>
+      <div class="ledger-range">
+        <label for="ledFrom">From</label>
+        <input type="date" id="ledFrom">
+        <label for="ledTo">To</label>
+        <input type="date" id="ledTo">
+      </div>
+    </div>
+    <div class="ledger-rule"></div>
+    <div class="hint" id="ledgerMeta"></div>
+    <div id="ledgerChart"><div class="empty-state">Connect your sheet in Settings to see the stock ledger.</div></div>
   </div>
   <div class="card">
     <h3>Recent activity</h3>
@@ -679,7 +777,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
     btn.classList.add('active');
     $('view-'+btn.dataset.view).classList.add('active');
-    if(btn.dataset.view==='dashboard') loadDashboard();
+    if(btn.dataset.view==='dashboard'){ loadDashboard(); loadLedger(); }
   });
 });
 
@@ -822,6 +920,157 @@ async function loadDashboard(){
     }
   }catch(err){ /* silent on dashboard */ }
 }
+
+/* ---------------- Stock ledger (dashboard chart) ---------------- */
+const CACHE_SREG_KEY = 'bdi_cache_sreg_';
+const CACHE_SREG_TTL = 10*60e3;  // ledger is per-range; server cache backs it up
+let ledgerItems = [];       // items from stockRegister (full range)
+let ledgerSel = null;       // Set of selected itemCodes
+let ledgerOpen = null;      // expanded itemCode or null
+
+function fmtQty(n){
+  n = Number(n) || 0;
+  return n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+function ledgerRangeKey(){
+  return CACHE_SREG_KEY + ($('ledFrom').value||'*') + '|' + ($('ledTo').value||'*');
+}
+function reconcileLedgerSel(){
+  const codes = ledgerItems.map(i=>i.itemCode);
+  if(!ledgerSel){
+    ledgerSel = new Set(codes);
+    return;
+  }
+  ledgerSel = new Set([...ledgerSel].filter(c=>codes.includes(c)));
+  if(ledgerOpen && !codes.includes(ledgerOpen)) ledgerOpen = null;
+}
+function updateLedgerMeta(){
+  const from = $('ledFrom').value, to = $('ledTo').value;
+  const range = (from?fmtDate(from):'Start') + ' — ' + (to?fmtDate(to):'Today');
+  $('ledgerMeta').textContent = ledgerItems.length + ' material(s) · ' + range;
+}
+function barCell(cls, val, max, on){
+  const pct = on ? Math.min(100, Math.round(Math.abs(val)/max*100)) : 0;
+  const lbl = cls==='rcv' ? 'Received' : cls==='iss' ? 'Issued' : 'Stock';
+  return `<div class="ldg-cell ${cls}">
+    <span class="ldg-celabel">${lbl}</span>
+    <div class="ldg-track">${on?`<div class="ldg-bar ${cls}" style="width:${pct}%"></div>`:''}</div>
+    <span class="ldg-num ${cls}">${fmtQty(val)}</span>
+  </div>`;
+}
+function ledgerDetailHTML(it){
+  const cards = it.movements.map(m=>`
+    <div class="mvm-card ${m.type==='Receipt'?'receipt':'issue'}">
+      <div class="mvm-top">
+        <span class="mvm-qty ${m.type==='Receipt'?'receipt':'issue'}">${m.type==='Receipt'?'+':'−'}${fmtQty(m.qty)}</span>
+        <span class="mvm-unit">${escapeHtml(it.unit)}</span>
+      </div>
+      <div class="mvm-sub"><span class="mvm-hr">${escapeHtml(m.hrNo)}</span><span class="mvm-vch">${m.voucherNo ? escapeHtml(m.voucherNo) : '<i>no voucher</i>'}</span></div>
+      <div class="mvm-sub"><span>${fmtDate(m.date)}</span></div>
+      ${m.agency?`<div class="mvm-agency" title="${escapeHtml(m.agency)}">${escapeHtml(m.agency)}</div>`:''}
+    </div>`).join('') || '<div class="empty-state">No movements in this range.</div>';
+  return `<div class="ldg-detail">
+    <div class="ldg-detail-head">
+      <span class="ldg-code">${escapeHtml(it.itemCode)}</span>
+      <span class="ldg-sum">Opening ${fmtQty(it.opening)} · Received ${fmtQty(it.received)} · Issued ${fmtQty(it.issued)} · Closing ${fmtQty(it.closing)} ${escapeHtml(it.unit)}</span>
+    </div>
+    <div class="ldg-cards">${cards}</div>
+  </div>`;
+}
+function syncLedgerCheckAll(){
+  const all = $('ledgerCheckAll');
+  if(!all) return;
+  const codes = ledgerItems.map(i=>i.itemCode);
+  const sel = codes.filter(c=>ledgerSel.has(c));
+  all.checked = codes.length>0 && sel.length===codes.length;
+  all.indeterminate = sel.length>0 && sel.length<codes.length;
+}
+function renderLedger(){
+  const chart = $('ledgerChart');
+  if(!ledgerItems.length){
+    chart.innerHTML = '<div class="empty-state">No transactions in this range.</div>';
+    $('ledgerMeta').textContent = '';
+    return;
+  }
+  reconcileLedgerSel();
+  const items = ledgerItems.slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
+  const max = items.reduce((m,it)=>Math.max(m, it.received, it.issued, Math.abs(it.closing)), 1);
+  chart.innerHTML = `
+    <div class="ldg-chart">
+      <div class="ldg-head">
+        <span></span><span>Material</span>
+        <span class="rcv">Received</span><span class="iss">Issued</span><span class="stk">Stock</span>
+      </div>
+      <div class="ldg-checkall">
+        <label><input type="checkbox" id="ledgerCheckAll"><span>All materials</span></label>
+      </div>
+      <div id="ldgRows">
+        ${items.map(it=>{
+          const on = ledgerSel.has(it.itemCode);
+          const open = ledgerOpen===it.itemCode;
+          return `<div class="ldg-row ${on?'':'off'} ${open?'open':''}" data-code="${escapeHtml(it.itemCode)}">
+            <div class="ldg-check"><input type="checkbox" data-sel="1" ${on?'checked':''}></div>
+            <button type="button" class="ldg-id" data-open="1">
+              <span class="ldg-code">${escapeHtml(it.itemCode)}</span>
+              <span class="ldg-desc">${escapeHtml(it.description)}</span>
+              <span class="ldg-unit">${escapeHtml(it.unit)}</span>
+              <span class="chev">▾</span>
+            </button>
+            ${barCell('rcv', it.received, max, on)}
+            ${barCell('iss', it.issued, max, on)}
+            ${barCell('stk', it.closing, max, on)}
+            ${open ? ledgerDetailHTML(it) : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  const all = $('ledgerCheckAll');
+  all.addEventListener('change', ()=>{
+    const items = ledgerItems.slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
+    ledgerSel = all.checked ? new Set(items.map(i=>i.itemCode)) : new Set();
+    renderLedger();
+  });
+  chart.querySelectorAll('.ldg-row').forEach(row=>{
+    const sel = row.querySelector('[data-sel]');
+    sel.addEventListener('change', ()=>{
+      const code = row.dataset.code;
+      if(sel.checked) ledgerSel.add(code); else ledgerSel.delete(code);
+      renderLedger();
+    });
+    row.querySelector('[data-open]').addEventListener('click', ()=>{
+      const code = row.dataset.code;
+      ledgerOpen = (ledgerOpen===code) ? null : code;
+      renderLedger();
+    });
+  });
+  syncLedgerCheckAll();
+  updateLedgerMeta();
+}
+async function loadLedger(force){
+  if(!SCRIPT_URL) return;
+  const key = ledgerRangeKey();
+  if(!force){
+    const c = cacheRead(key, CACHE_SREG_TTL);
+    if(c && c.data && Array.isArray(c.data.items)){
+      ledgerItems = c.data.items;
+      renderLedger();
+      if(!c.stale) return;
+    }
+  }
+  try{
+    const data = await apiGet('stockRegister', { from: $('ledFrom').value, to: $('ledTo').value, refresh: force?'1':'' });
+    cacheWrite(key, data);
+    ledgerItems = data.items || [];
+    renderLedger();
+  }catch(err){ /* silent on dashboard */ }
+}
+(function initLedger(){
+  const now = new Date();
+  $('ledTo').valueAsDate = now;
+  $('ledFrom').valueAsDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  $('ledFrom').addEventListener('change', ()=>loadLedger());
+  $('ledTo').addEventListener('change', ()=>loadLedger());
+})();
 
 /* ---------------- New Entry ---------------- */
 $('fDate').valueAsDate = new Date();
@@ -1339,6 +1588,7 @@ if(SCRIPT_URL){
     $('syncDot').classList.remove('off');
     updateMetaCacheStatus();
     loadDashboard();
+    loadLedger();
   }).catch(()=>{});
   prefetchWoIndex();
 }

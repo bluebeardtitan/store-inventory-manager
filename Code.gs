@@ -185,6 +185,15 @@ function cacheDrop_(key) {
   try { CacheService.getScriptCache().remove(key); } catch (err) {}
 }
 
+/* Versioned cache namespace so one write invalidates all stockRegister reads. */
+const SREG_VER_KEY = 'sreg_ver';
+function sregVersion_() {
+  return cacheGet_(SREG_VER_KEY) || '1';
+}
+function bumpSregVersion_() {
+  cachePut_(SREG_VER_KEY, String(Number(sregVersion_()) + 1), 21600);
+}
+
 /* ---------------- CORS / entry points ---------------- */
 
 function doGet(e) {
@@ -325,6 +334,7 @@ function addTransaction_(body) {
 
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, TXN_HEADERS.length).setValues(rows);
   cacheDrop_('dash_v1');
+  bumpSregVersion_();
 
   return { success: true, hrNo: hrNo, voucherNo: body.voucherNo || '', lines: rows.length };
 }
@@ -355,6 +365,7 @@ function updateVoucher_(body) {
   });
   if (!updated) throw new Error('No transaction found with HR No. ' + body.hrNo);
   cacheDrop_('dash_v1');
+  bumpSregVersion_();
   return { success: true, updated: updated };
 }
 
@@ -422,8 +433,25 @@ function applyFilters_(rows, params) {
  * within [from, to], per item. If itemCode given, restrict to that item.
  * Reads across the live tab and all archived year tabs, so balances stay
  * correct across a calendar-year rollover.
+ * Results are cached server-side keyed by from|to|itemCode; the cache is
+ * invalidated (version bump) on every write so it stays correct.
+ * refresh=1 bypasses the cache read.
  */
 function stockRegister_(params) {
+  const cacheKey = 'sreg_v' + sregVersion_() + '_' +
+    [params.from || '', params.to || '', params.itemCode || ''].join('|');
+  if (params.refresh !== '1') {
+    const hit = cacheGet_(cacheKey);
+    if (hit) {
+      try { return JSON.parse(hit); } catch (err) {}
+    }
+  }
+  const result = buildStockRegister_(params);
+  cachePut_(cacheKey, JSON.stringify(result));
+  return result;
+}
+
+function buildStockRegister_(params) {
   const rows = getAllTxns_();
   const from = params.from ? new Date(params.from) : null;
   const to = params.to ? new Date(params.to) : null;
