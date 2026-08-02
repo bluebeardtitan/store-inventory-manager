@@ -477,7 +477,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   border-bottom:2px solid var(--ink);
 }
 .rd-tab{
-  appearance:none; border:none; cursor:pointer;
+  position:relative; z-index:0; appearance:none; border:none; cursor:pointer;
   font-family:var(--disp); font-weight:600; font-size:12.5px; letter-spacing:.11em;
   text-transform:uppercase; color:var(--ink-mut); background:var(--tab);
   padding:9px 17px 10px; margin-bottom:-2px;
@@ -485,7 +485,19 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   transition:color .15s, background .15s;
 }
 .rd-tab:hover{color:var(--ink);}
-.rd-tab.active{background:var(--paper); color:var(--ink);}
+.rd-tab.active{background:transparent; color:var(--ink);}
+.rd-tab.active::before{
+  content:''; position:absolute; inset:0; z-index:-2;
+  background:var(--ink);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px));
+  filter:url(#inkWobbleOuter);
+}
+.rd-tab.active::after{
+  content:''; position:absolute; inset:3px; z-index:-1;
+  background:var(--paper);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px));
+  filter:url(#inkWobbleInner);
+}
 .rd-dates{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 .rd-scope{margin-top:12px;}
 .rd-opt{margin:12px 0 0;}
@@ -642,6 +654,19 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="inkWobbleOuter" x="-40%" y="-40%" width="180%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="inkWobbleInner" x="-40%" y="-40%" width="180%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="11" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
 <div class="topbar">
   <div class="brand">
     <div class="line1" id="storeLine1">Berhampore Division-I &middot; PHE</div>
@@ -696,16 +721,18 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     </div>
     <div class="rd-scope" data-rd-scope="agency">
       <label for="rdAgency">Agency name <span class="opt">(part is fine)</span></label>
-      <input type="text" id="rdAgency" name="rdAgency" placeholder="e.g. Jogmaya Engineering">
+      <input type="text" id="rdAgency" name="rdAgency" list="agencyList" placeholder="e.g. Jogmaya Engineering">
     </div>
     <div class="rd-scope hidden" data-rd-scope="workOrder">
       <label for="rdWorkOrder">Work order no. <span class="opt">(part is fine)</span></label>
-      <input type="text" id="rdWorkOrder" name="rdWorkOrder" placeholder="e.g. 1247/BD-I">
+      <input type="text" id="rdWorkOrder" name="rdWorkOrder" list="workOrderList" placeholder="e.g. 1247/BD-I">
     </div>
     <div class="rd-scope hidden" data-rd-scope="scheme">
       <label for="rdScheme">Scheme code</label>
       <input type="text" id="rdScheme" name="rdScheme" list="schemeList" placeholder="Leave blank for all schemes">
     </div>
+    <datalist id="agencyList"></datalist>
+    <datalist id="workOrderList"></datalist>
     <div class="rd-dates">
       <div><label for="rdFrom">From</label><input type="date" id="rdFrom" name="rdFrom"></div>
       <div><label for="rdTo">To</label><input type="date" id="rdTo" name="rdTo"></div>
@@ -965,8 +992,11 @@ const $ = id => document.getElementById(id);
 /* ---------------- Client-side cache (fast boot + jiffy search) ---------------- */
 const CACHE_META_KEY = 'bdi_cache_meta';
 const CACHE_WO_KEY = 'bdi_cache_wo_';
+const CACHE_RD_AGENCY_KEY = 'bdi_cache_rd_agency';
+const CACHE_RD_WO_KEY = 'bdi_cache_rd_wo';
 const CACHE_META_TTL = 12*3600e3; // items/schemes change rarely — 12h
 const CACHE_WO_TTL = 6*3600e3;    // work order master — 6h, revalidated on search
+const CACHE_RD_TTL = 30*24*3600e3; // learned movement-report dropdown options — 30d
 
 function cacheRead(key, ttl){
   try{
@@ -1448,10 +1478,11 @@ function woIndexKey(year){ return CACHE_WO_KEY + year; }
 async function prefetchWoIndex(){
   const year = $('woYear').value;
   if(!year) return;
-  if(woIndex && woIndex.year === year && !woIndex.stale) return;
+  if(woIndex && woIndex.year === year && !woIndex.stale){ refreshRdDatalists(); return; }
   const c = cacheRead(woIndexKey(year), CACHE_WO_TTL);
   if(c){
     woIndex = { year, rows: c.data, stale: c.stale };
+    refreshRdDatalists();
     if(!c.stale) return;
   }
   try{
@@ -1459,8 +1490,38 @@ async function prefetchWoIndex(){
     if(data.rows){
       woIndex = { year, rows: data.rows, stale: false };
       cacheWrite(woIndexKey(year), data.rows);
+      refreshRdDatalists();
     }
   }catch(e){ /* keep whatever we have */ }
+}
+
+/* ---------------- Movement report dropdowns (seeded from WO index, self-learning from results) ---------------- */
+function loadRdLearned(key){
+  const c = cacheRead(key, CACHE_RD_TTL);
+  return (c && Array.isArray(c.data)) ? c.data : [];
+}
+function mergeRdLearned(key, newValues){
+  const existing = loadRdLearned(key);
+  const set = new Set(existing);
+  let changed = false;
+  newValues.forEach(v=>{
+    v = String(v||'').trim();
+    if(v && !set.has(v)){ set.add(v); changed = true; }
+  });
+  if(changed) cacheWrite(key, Array.from(set));
+}
+function paintDatalist(id, values){
+  const el = $(id);
+  if(!el) return;
+  el.innerHTML = Array.from(new Set(values.filter(Boolean)))
+    .sort((a,b)=>a.localeCompare(b))
+    .map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+}
+function refreshRdDatalists(){
+  const woAgencies = (woIndex && woIndex.rows) ? woIndex.rows.map(r=>r.AgencyName) : [];
+  const woNos = (woIndex && woIndex.rows) ? woIndex.rows.map(r=>r.WorkOrderNo) : [];
+  paintDatalist('agencyList', woAgencies.concat(loadRdLearned(CACHE_RD_AGENCY_KEY)));
+  paintDatalist('workOrderList', woNos.concat(loadRdLearned(CACHE_RD_WO_KEY)));
 }
 
 function filterWoRows(rows, q){
@@ -1510,6 +1571,7 @@ async function revalidateWoIndex(year, seq){
     if(data.rows){
       woIndex = { year, rows: data.rows, stale: false };
       cacheWrite(woIndexKey(year), data.rows);
+      refreshRdDatalists();
       if($('woYear').value === year && $('woSearch').value.trim()) runWoSearch();
     }
   }catch(e){}
@@ -2050,6 +2112,9 @@ $('btnRdRun').addEventListener('click', async ()=>{
   try{
     const data = await apiGet('list', params);
     lastRdRows = data.rows || [];
+    mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>r.AgencyDetails));
+    mergeRdLearned(CACHE_RD_WO_KEY, lastRdRows.map(r=>r.WorkOrderDetails));
+    refreshRdDatalists();
     const wrap = $('rdResults');
     wrap.classList.remove('hidden');
     $('btnRdExport').classList.toggle('hidden', !lastRdRows.length);
@@ -2103,6 +2168,7 @@ applyStoreName();
 loadMetaFromCache();
 populateYearSelect();
 updateMetaCacheStatus();
+refreshRdDatalists();
 if(SCRIPT_URL){
   loadMeta().then(()=>{
     $('syncDot').classList.remove('off');
