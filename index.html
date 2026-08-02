@@ -651,7 +651,11 @@ async function apiGet(action, params={}){
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k,v])=>{ if(v) url.searchParams.set(k,v); });
   const res = await fetch(url.toString());
-  const data = await res.json();
+  let data;
+  try{ data = await res.json(); }
+  catch(e){
+    throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the Script URL in Settings and that the web app is deployed.');
+  }
   if(data.error) throw new Error(data.error);
   return data;
 }
@@ -662,7 +666,11 @@ async function apiPost(action, body={}){
     headers:{'Content-Type':'text/plain;charset=utf-8'}, // avoids CORS preflight against Apps Script
     body: JSON.stringify({ action, ...body })
   });
-  const data = await res.json();
+  let data;
+  try{ data = await res.json(); }
+  catch(e){
+    throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the Script URL in Settings and that the web app is deployed.');
+  }
   if(data.error) throw new Error(data.error);
   return data;
 }
