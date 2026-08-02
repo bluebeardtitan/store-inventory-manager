@@ -769,19 +769,23 @@ function populateYearSelect(){
 }
 
 let woSearchTimer = null;
+let woSeq = 0;
 $('woSearch').addEventListener('input', ()=>{
+  $('woResults').classList.remove('open');
   clearTimeout(woSearchTimer);
   woSearchTimer = setTimeout(runWoSearch, 350);
 });
 $('woYear').addEventListener('change', runWoSearch);
 
 async function runWoSearch(){
+  const seq = ++woSeq;
   const q = $('woSearch').value.trim();
   const year = $('woYear').value;
   const results = $('woResults');
   if(!q){ results.innerHTML=''; results.classList.remove('open'); return; }
   try{
     const data = await apiGet('workOrders', { year, q });
+    if(seq !== woSeq) return;
     if(!data.rows || !data.rows.length){
       results.innerHTML = ixHead('Work order index') +
         `<div class="ix-empty">${escapeHtml(data.note || 'No matches in ' + year + '.')}</div>`;
@@ -816,13 +820,21 @@ async function runWoSearch(){
 }
 $('woSearch').addEventListener('keydown', (e)=>{
   const results = $('woResults');
-  if(!results.classList.contains('open')) return;
-  const rows = Array.from(results.querySelectorAll('.ix-row'));
+  const rows = results.classList.contains('open') ? Array.from(results.querySelectorAll('.ix-row')) : [];
+  if(e.key==='Enter'){
+    if(rows.length){
+      const idx = rows.indexOf(results.querySelector('.ix-row.active'));
+      if(idx > -1){ e.preventDefault(); rows[idx].click(); return; }
+    }
+    e.preventDefault();
+    clearTimeout(woSearchTimer);
+    runWoSearch();
+    return;
+  }
   if(!rows.length) return;
   let idx = rows.indexOf(results.querySelector('.ix-row.active'));
   if(e.key==='ArrowDown'){ e.preventDefault(); idx = (idx+1) % rows.length; }
   else if(e.key==='ArrowUp'){ e.preventDefault(); idx = (idx-1+rows.length) % rows.length; }
-  else if(e.key==='Enter' && idx > -1){ e.preventDefault(); rows[idx].click(); return; }
   else if(e.key==='Escape'){ e.preventDefault(); results.classList.remove('open'); return; }
   else return;
   rows.forEach(r=>r.classList.remove('active'));
