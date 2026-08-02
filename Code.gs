@@ -144,6 +144,10 @@ function getConfigMap_() {
   return map;
 }
 
+function getConfigValue_(key) {
+  return PropertiesService.getScriptProperties().getProperty(CONFIG_PREFIX + key) || '';
+}
+
 function extractSheetId_(idOrUrl) {
   if (!idOrUrl) return '';
   const m = idOrUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -170,18 +174,25 @@ function sheetRowsAsObjects_(sh) {
   const data = sh.getDataRange().getValues();
   if (data.length < 2) return [];
   const headers = data[0].map(h => String(h).trim());
-  return data.slice(1)
-    .filter(row => row.some(c => c !== '' && c !== null))
-    .map(row => {
-      const obj = {};
-      headers.forEach((h, i) => obj[h] = row[i]);
-      return obj;
-    });
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row.some(c => c !== '' && c !== null)) continue;
+    const obj = {};
+    Object.defineProperty(obj, '__row', { value: i + 1, enumerable: false, writable: true });
+    headers.forEach((h, j) => obj[h] = row[j]);
+    rows.push(obj);
+  }
+  return rows;
 }
 
 /* ---------------- Server-side cache (fast reads) ---------------- */
 
-const CACHE_TTL_SEC = 1800; // 30 min; Apps Script CacheService max is 6h
+const CACHE_TTL_SEC = 1800;      // 30 min; Apps Script CacheService max is 6h
+const SREG_VER_TTL_SEC = 21600;  // 6h — the sreg version counter outlives payload TTLs
+const CACHE_KEY_DASH = 'dash_v1';
+const CACHE_KEY_META = 'meta_v1';
+const SREG_VER_KEY = 'sreg_ver';
 
 function cacheGet_(key) {
   try { return CacheService.getScriptCache().get(key); } catch (err) { return null; }
@@ -194,12 +205,35 @@ function cacheDrop_(key) {
 }
 
 /* Versioned cache namespace so one write invalidates all stockRegister reads. */
-const SREG_VER_KEY = 'sreg_ver';
 function sregVersion_() {
   return cacheGet_(SREG_VER_KEY) || '1';
 }
 function bumpSregVersion_() {
-  cachePut_(SREG_VER_KEY, String(Number(sregVersion_()) + 1), 21600);
+  cachePut_(SREG_VER_KEY, String(Number(sregVersion_()) + 1), SREG_VER_TTL_SEC);
+}
+
+/** Every write must invalidate the cached reads (dashboard + stock register). */
+function invalidateReadCaches_() {
+  cacheDrop_(CACHE_KEY_DASH);
+  bumpSregVersion_();
+}
+
+/**
+ * Standard cache-first read: serve the payload from CacheService when present
+ * (unless `bypass` — i.e. refresh=1), otherwise build it fresh, store it and
+ * return. init_() only runs on the build path so cached requests stay cheap.
+ */
+function withCache_(cacheKey, bypass, buildFn) {
+  if (!bypass) {
+    const hit = cacheGet_(cacheKey);
+    if (hit) {
+      try { return JSON.parse(hit); } catch (err) {}
+    }
+  }
+  init_();
+  const result = buildFn();
+  cachePut_(cacheKey, JSON.stringify(result));
+  return result;
 }
 
 /* ---------------- CORS / entry points ---------------- */
@@ -348,8 +382,7 @@ function addTransaction_(body) {
   });
 
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, TXN_HEADERS.length).setValues(rows);
-  cacheDrop_('dash_v1');
-  bumpSregVersion_();
+  invalidateReadCaches_();
 
   return { success: true, hrNo: hrNo, voucherNo: body.voucherNo || '', lines: rows.length };
 }
@@ -365,22 +398,16 @@ function updateVoucher_(body) {
   const sheets = getAllTxnSheets_();
   let updated = 0;
   sheets.forEach(function (sh) {
-    const data = sh.getDataRange().getValues();
-    if (data.length < 2) return;
-    const headers = data[0];
-    const hrCol = headers.indexOf('HRNo');
-    const vCol = headers.indexOf('VoucherNo');
-    if (hrCol === -1 || vCol === -1) return;
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][hrCol] === body.hrNo) {
-        sh.getRange(i + 1, vCol + 1).setValue(body.voucherNo);
+    const rows = sheetRowsAsObjects_(sh);
+    rows.forEach(function (r) {
+      if (r['HRNo'] === body.hrNo) {
+        sh.getRange(r.__row + 1, TXN_HEADERS.indexOf('VoucherNo') + 1).setValue(body.voucherNo);
         updated++;
       }
-    }
+    });
   });
   if (!updated) throw new Error('No transaction found with HR No. ' + body.hrNo);
-  cacheDrop_('dash_v1');
-  bumpSregVersion_();
+  invalidateReadCaches_();
   return { success: true, updated: updated };
 }
 
@@ -404,7 +431,7 @@ function getAllTxns_() {
 function listTransactions_(params) {
   let rows = getAllTxns_();
   rows = applyFilters_(rows, params);
-  rows.sort(function (a, b) { return new Date(b.Date) - new Date(a.Date) || b.SlNo - a.SlNo; });
+  rows.sort(byNewest);
   return { rows: rows, count: rows.length };
 }
 
@@ -428,6 +455,14 @@ function applyFilters_(rows, params) {
   }
   if (params.noVoucherOnly === 'true') {
     rows = rows.filter(function (r) { return !r.VoucherNo; });
+  }
+  if (params.agency) {
+    const q = params.agency.toLowerCase();
+    rows = rows.filter(function (r) { return (r.AgencyDetails || '').toLowerCase().indexOf(q) > -1; });
+  }
+  if (params.workOrder) {
+    const q = params.workOrder.toLowerCase();
+    rows = rows.filter(function (r) { return (r.WorkOrderDetails || '').toLowerCase().indexOf(q) > -1; });
   }
   if (params.q) {
     const q = params.q.toLowerCase();
@@ -455,16 +490,19 @@ function applyFilters_(rows, params) {
 function stockRegister_(params) {
   const cacheKey = 'sreg_v' + sregVersion_() + '_' +
     [params.from || '', params.to || '', params.itemCode || ''].join('|');
-  if (params.refresh !== '1') {
-    const hit = cacheGet_(cacheKey);
-    if (hit) {
-      try { return JSON.parse(hit); } catch (err) {}
-    }
-  }
-  init_();
-  const result = buildStockRegister_(params);
-  cachePut_(cacheKey, JSON.stringify(result));
-  return result;
+  return withCache_(cacheKey, params.refresh === '1', function () {
+    return buildStockRegister_(params);
+  });
+}
+
+/** Sort comparator: newest Date first, ties broken by highest SlNo first. */
+function byNewest(a, b) {
+  return new Date(b.Date) - new Date(a.Date) || b.SlNo - a.SlNo;
+}
+
+/** True when d is inside [from, to]; either bound may be null (open-ended). */
+function isInRange_(d, from, to) {
+  return (!from || d >= from) && (!to || d <= to);
 }
 
 function buildStockRegister_(params) {
@@ -494,7 +532,7 @@ function buildStockRegister_(params) {
 
     if (from && d < from) {
       byItem[key].opening += signed;
-    } else if ((!from || d >= from) && (!to || d <= to)) {
+    } else if (isInRange_(d, from, to)) {
       if (r.TransactionType === 'Receipt') byItem[key].received += qty;
       else byItem[key].issued += qty;
       byItem[key].movements.push({
@@ -516,17 +554,7 @@ function buildStockRegister_(params) {
 /* ---------------- Master data (external files, read-only) ---------------- */
 
 function getMeta_(force) {
-  const cacheKey = 'meta_v1';
-  if (!force) {
-    const hit = cacheGet_(cacheKey);
-    if (hit) {
-      try { return JSON.parse(hit); } catch (err) {}
-    }
-  }
-  init_();
-  const result = buildMeta_();
-  cachePut_(cacheKey, JSON.stringify(result));
-  return result;
+  return withCache_(CACHE_KEY_META, force, buildMeta_);
 }
 
 function buildMeta_() {
@@ -572,37 +600,31 @@ function getWorkOrderYears_(cfg) {
  * Same row shape as searchWorkOrders_(), but unfiltered and cached.
  */
 function workOrderIndex_(params) {
-  const cfg = getConfigMap_();
   const year = params.year;
   if (!year) throw new Error('year (calendar year, e.g. 2026) is required.');
-  const id = cfg['WorkOrderMasterSheetId'];
-  if (!id) return { rows: [], note: 'No Work Order Master file configured yet — see Config tab.' };
-
-  const cacheKey = 'woidx_' + year + '_v1';
-  if (params.refresh !== '1') {
-    const hit = cacheGet_(cacheKey);
-    if (hit) {
-      try { return JSON.parse(hit); } catch (err) {}
-    }
-  }
-
-  const tab = openExternalTab_(id, String(year));
+  const tab = openWorkOrderTab_(String(year));
   if (!tab) return { rows: [], note: 'No tab named "' + year + '" found in the Work Order Master file.' };
 
-  init_();
-  const rows = sheetRowsAsObjects_(tab)
-    .map(function (r) {
-      return {
-        AgencyName: r['AgencyName'],
-        WorkOrderNo: r['WorkOrderNo'],
-        WorkOrderDate: r['WorkOrderDate'],
-        NameOfWork: r['NameOfWork']
-      };
-    })
-    .filter(function (r) { return r.WorkOrderNo; });
-  const result = { rows: rows };
-  cachePut_(cacheKey, JSON.stringify(result));
-  return result;
+  const cacheKey = 'woidx_' + year + '_v1';
+  return withCache_(cacheKey, params.refresh === '1', function () {
+    const rows = sheetRowsAsObjects_(tab)
+      .map(function (r) {
+        return {
+          AgencyName: r['AgencyName'],
+          WorkOrderNo: r['WorkOrderNo'],
+          WorkOrderDate: r['WorkOrderDate'],
+          NameOfWork: r['NameOfWork']
+        };
+      })
+      .filter(function (r) { return r.WorkOrderNo; });
+    return { rows: rows };
+  });
+}
+
+/** Opens the given calendar-year tab of the Work Order Master, or null when missing/unconfigured. */
+function openWorkOrderTab_(year) {
+  const id = getConfigValue_('WorkOrderMasterSheetId');
+  return id ? openExternalTab_(id, year) : null;
 }
 
 /**
@@ -613,13 +635,9 @@ function workOrderIndex_(params) {
  * Kept as a fallback for the frontend when the local index can't load.
  */
 function searchWorkOrders_(params) {
-  const cfg = getConfigMap_();
   const year = params.year;
   if (!year) throw new Error('year (calendar year, e.g. 2026) is required.');
-  const id = cfg['WorkOrderMasterSheetId'];
-  if (!id) return { rows: [], note: 'No Work Order Master file configured yet — see Config tab.' };
-
-  const tab = openExternalTab_(id, String(year));
+  const tab = openWorkOrderTab_(String(year));
   if (!tab) return { rows: [], note: 'No tab named "' + year + '" found in the Work Order Master file.' };
 
   let rows = sheetRowsAsObjects_(tab);
@@ -637,17 +655,7 @@ function searchWorkOrders_(params) {
 /* ---------------- Dashboard ---------------- */
 
 function getDashboard_(force) {
-  const cacheKey = 'dash_v1';
-  if (!force) {
-    const hit = cacheGet_(cacheKey);
-    if (hit) {
-      try { return JSON.parse(hit); } catch (err) {}
-    }
-  }
-  init_();
-  const result = buildDashboard_();
-  cachePut_(cacheKey, JSON.stringify(result));
-  return result;
+  return withCache_(CACHE_KEY_DASH, force, buildDashboard_);
 }
 
 function buildDashboard_() {
@@ -655,21 +663,35 @@ function buildDashboard_() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   let issuedQty = 0, receivedQty = 0, issuedLines = 0, receivedLines = 0;
+  const issuedHrs = new Set(), receivedHrs = new Set();
+  const stock = {};
   rows.forEach(function (r) {
     const d = new Date(r.Date);
+    const qty = Number(r.Qty) || 0;
     if (d >= monthStart) {
-      const qty = Number(r.Qty) || 0;
       if (r.TransactionType === 'Issue') { issuedQty += qty; issuedLines++; }
       else { receivedQty += qty; receivedLines++; }
     }
+    if (d.getFullYear() === now.getFullYear()) {
+      if (r.TransactionType === 'Issue') issuedHrs.add(String(r.HRNo));
+      else if (r.TransactionType === 'Receipt') receivedHrs.add(String(r.HRNo));
+    }
+    stock[r.ItemCode] = (stock[r.ItemCode] || 0) + (r.TransactionType === 'Receipt' ? qty : -qty);
+  });
+  let positiveStock = 0, negativeStock = 0;
+  Object.keys(stock).forEach(function (k) {
+    if (stock[k] > 0) positiveStock++;
+    else if (stock[k] < 0) negativeStock++;
   });
   const pendingVoucher = rows.filter(function (r) { return !r.VoucherNo; }).length;
   const recent = rows
-    .sort(function (a, b) { return new Date(b.Date) - new Date(a.Date) || b.SlNo - a.SlNo; })
+    .sort(byNewest)
     .slice(0, 8);
   return {
     monthIssuedQty: issuedQty, monthReceivedQty: receivedQty,
     monthIssuedLines: issuedLines, monthReceivedLines: receivedLines,
+    yearIssuedHrs: issuedHrs.size, yearReceivedHrs: receivedHrs.size,
+    positiveStock: positiveStock, negativeStock: negativeStock,
     totalTxns: rows.length, pendingVoucher: pendingVoucher, recent: recent
   };
 }

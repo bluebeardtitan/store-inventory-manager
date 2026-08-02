@@ -110,6 +110,7 @@ a.link{color:var(--ink); text-decoration:underline; text-underline-offset:2px; f
 
 label{display:block; font-size:11px; font-weight:600; color:var(--ink-mut); text-transform:uppercase; letter-spacing:.07em; margin:14px 0 6px;}
 label:first-child{margin-top:0;}
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;}
 .opt{text-transform:none; font-weight:500; letter-spacing:0; color:var(--ink-mut); font-size:11px;}
 .check-label{display:flex; align-items:center; gap:8px; flex-direction:row; text-transform:none; font-weight:500; font-size:13.5px; color:var(--ink);}
 
@@ -290,21 +291,47 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 }
 .card h3 + label{margin-top:0;}
 
-.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;}
-.stat{
-  background:var(--sheet); border:1px solid #E2D9BC; border-radius:4px;
-  padding:16px; box-shadow:var(--shadow);
+/* Stock position — the desk summary, four typewritten figures on a ruled sheet */
+.pos-sheet{background:var(--paper); border-color:#DDD2B2;}
+.pos-head{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+.pos-head .ledger-stamp{font-size:22px;}
+.pos-head-rule{flex:1; height:2px; background:var(--ink); position:relative;}
+.pos-head-rule::after{content:''; position:absolute; left:0; right:0; top:3px; height:1px; background:var(--rule-strong);}
+.pos-asof{font-size:11px; color:var(--ink-mut); letter-spacing:.04em; white-space:nowrap;}
+.pos-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px;}
+.pos-cell{
+  position:relative; display:flex; flex-direction:column; align-items:flex-start;
+  padding:14px 14px 12px; border-radius:3px; text-align:left;
+  background:rgba(255,253,245,.7); border:1px solid var(--rule);
 }
-.stat .label{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-mut); margin-bottom:8px; font-weight:600;}
-.stat .value{font-family:var(--disp); font-size:32px; font-weight:700; line-height:1;}
-.stat .sub{font-size:12px; color:var(--ink-mut); margin-top:4px;}
+.pos-cell::before{content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--rule-strong);}
+.pos-label{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-mut);}
+.pos-sub{font-weight:500; opacity:.75; letter-spacing:.04em; text-transform:none;}
+.pos-value{font-family:var(--stamp); font-size:38px; line-height:1.1; margin:7px 0 3px; color:var(--ink); font-variant-numeric:tabular-nums;}
+.pos-note{font-size:11px; color:var(--ink-mut); line-height:1.45;}
+.pos-link{cursor:pointer; border:1px solid var(--rule-strong); background:rgba(255,253,245,.9);
+  transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease; width:100%;}
+.pos-link:hover{transform:translateY(-1px); box-shadow:0 10px 18px -12px rgba(8,13,26,.5); border-color:var(--ink);}
+.pos-link .pos-value{color:var(--receipt);}
+.pos-link.warn .pos-value{color:var(--margin);}
+.pos-link .pos-note{text-decoration:underline; text-decoration-color:var(--rule-strong); text-underline-offset:2px;}
+@media (min-width:640px){ .pos-grid{grid-template-columns:repeat(4,1fr);} }
 
 /* Stock ledger — a ruled register sheet */
 .ledger{background:var(--paper); border-color:#DDD2B2;}
 .ledger-head{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;}
 .ledger-stamp{font-family:var(--stamp); color:var(--margin); font-size:20px; letter-spacing:.05em; text-transform:uppercase;}
-.ledger-range{display:flex; align-items:center; gap:6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-mut); font-weight:700;}
-.ledger-range input{border:1px solid var(--rule-strong); border-radius:3px; background:#FFFDF5; padding:5px 7px; font-size:12px; color:var(--ink); font-family:var(--body);}
+.ledger-filter{margin-top:14px;}
+.lf-search{position:relative;}
+.lf-search svg{position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--ink-mut); pointer-events:none;}
+.lf-search input{background:#FFFDF5; border:1.5px solid var(--rule-strong); border-radius:3px; padding:9px 10px 9px 32px;}
+.lf-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px;}
+.lf-field label{margin:0 0 5px;}
+.lf-field input,.lf-field select{background:#FFFDF5; border:1px solid var(--rule-strong); border-radius:3px; padding:8px 9px; font-size:13.5px;}
+.lf-actions{display:flex; gap:10px; margin-top:14px;}
+.lf-actions .primary,.lf-actions .secondary{width:auto; margin-top:0; padding:11px 22px; flex:0 0 auto;}
+.lf-actions .secondary{border:1.5px solid var(--rule-strong);}
+@media (max-width:600px){ .lf-grid{grid-template-columns:1fr 1fr;} }
 .ledger-rule{height:2px; background:var(--ink); margin:12px 0 4px; position:relative;}
 .ledger-rule::after{content:''; position:absolute; left:0; right:0; top:3px; height:1px; background:var(--rule-strong);}
 
@@ -410,19 +437,88 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
 .filter-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 
-.item-block{border-bottom:1px solid var(--rule); padding:14px 0;}
-.item-block:last-child{border-bottom:none;}
-.item-block-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
-.item-block-head .code{font-family:var(--stamp); font-size:13px;}
-.item-block-head .desc{font-size:12.5px; color:var(--ink-mut);}
-.item-block > .desc{margin-bottom:8px;}
-.balance-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px;}
-.balance-grid .b{text-align:center; background:rgba(30,41,64,.05); border-radius:3px; padding:8px 4px;}
-.balance-grid .b .n{font-family:var(--stamp); font-size:14px;}
-.balance-grid .b .l{font-size:9.5px; text-transform:uppercase; color:var(--ink-mut); letter-spacing:.05em; margin-top:2px;}
+/* Report / register generator — scope stamps */
+.rep-scope,.reg-scope{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0 6px;}
+.reg-scope{grid-template-columns:repeat(2,1fr);}
+.rep-scope-btn,.reg-scope-btn{
+  padding:11px 6px 9px; border:1.5px solid var(--rule-strong); border-radius:3px;
+  background:transparent; color:var(--ink-mut); font-family:var(--stamp); font-size:13px;
+  text-transform:uppercase; letter-spacing:.08em; cursor:pointer; transition:background .15s, color .15s, border-color .15s, transform .12s;
+}
+.rep-scope-btn:hover,.reg-scope-btn:hover{border-color:var(--ink); color:var(--ink);}
+.rep-scope-btn:active,.reg-scope-btn:active{transform:translateY(1px);}
+.rep-scope-btn.active,.reg-scope-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
+.rep-field{margin-top:2px;}
 
 .empty-state{text-align:center; padding:36px 12px; color:var(--ink-mut); font-size:13.5px;}
 .empty-state .sig{font-family:var(--stamp); font-size:28px; color:var(--rule-strong); margin-bottom:8px;}
+
+/* Register report — a ruled government-register sheet */
+.reg-toolbar{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+.reg-toolbar .ghost{margin-top:0;}
+.reg-sheet{
+  position:relative;
+  background-color:var(--sheet);
+  background-image:repeating-linear-gradient(to bottom, transparent 0 26px, rgba(30,41,64,.035) 26px 27px);
+  border:1px solid #E2D9BC;
+  border-radius:2px;
+  padding:30px 18px 34px 44px;
+  color:var(--ink);
+}
+.reg-sheet::before{
+  content:''; position:absolute; left:22px; top:0; bottom:0; width:2px;
+  background:var(--margin);
+}
+.reg-sheet-head{border-bottom:1.5px solid var(--rule-strong); padding-bottom:14px; margin-bottom:4px;}
+.reg-kicker{font-family:var(--stamp); font-size:11.5px; letter-spacing:.04em; color:var(--margin);}
+.reg-title{
+  font-family:var(--disp); font-weight:700; font-size:30px; line-height:1.02;
+  text-transform:uppercase; letter-spacing:.015em; margin:7px 0 6px; outline:none;
+  border-bottom:1px dashed transparent;
+}
+.reg-title:hover{border-bottom-color:var(--rule-strong);}
+.reg-title:focus{border-bottom-color:var(--margin);}
+.reg-meta{font-size:11.5px; color:var(--ink-mut); letter-spacing:.03em;}
+.reg-meta b{color:var(--ink); font-weight:600;}
+
+/* Index page — dotted leaders + blank page boxes */
+.reg-index{padding:14px 2px 6px;}
+.reg-index h3,.reg-section > h3{
+  font-family:var(--stamp); font-weight:400; font-size:13px;
+  text-transform:uppercase; letter-spacing:.12em; color:var(--ink); margin:0 0 10px;
+}
+.reg-index-entry{display:flex; align-items:flex-end; gap:8px; padding:3px 0; font-size:13.5px;}
+.reg-index-entry .rie-text{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
+.reg-index-entry .rie-dots{flex:1; border-bottom:1px dotted var(--ink-mut); height:1px; margin-bottom:5px;}
+.reg-index-entry .rie-page{width:38px; height:15px; border:1px solid var(--ink); flex-shrink:0;}
+
+/* Sections & ruled tables */
+.reg-section{padding-top:18px;}
+.reg-section > h3 .code{color:var(--ink-mut); font-family:var(--body); font-size:11px; letter-spacing:.06em; text-transform:none;}
+.reg-sub{font-family:var(--stamp); font-size:12px; letter-spacing:.1em; text-transform:uppercase; margin:14px 0 6px;}
+.reg-sub.rcv{color:var(--receipt);}
+.reg-sub.iss{color:var(--margin);}
+.reg-table{width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:16px;}
+.reg-table th{
+  font-family:var(--disp); font-weight:600; font-size:11.5px;
+  text-transform:uppercase; letter-spacing:.07em;
+  border-bottom:1.5px solid var(--ink); padding:6px 8px; text-align:left; white-space:nowrap;
+}
+.reg-table th.rcv{color:var(--receipt); border-bottom-color:var(--receipt);}
+.reg-table th.iss{color:var(--margin); border-bottom-color:var(--margin);}
+.reg-table td{padding:6px 8px; border-bottom:1px solid var(--rule); vertical-align:top;}
+.reg-table tr:last-child td{border-bottom:1.5px solid var(--ink);}
+.reg-table td.num,.reg-table th.num{text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums;}
+.reg-table td.num{font-family:var(--disp); font-weight:500; font-size:13.5px;}
+.reg-table td.dim{color:var(--ink-mut);}
+.reg-table .rec{color:var(--receipt);}
+.reg-table .iss{color:var(--margin);}
+.reg-sig{display:flex; justify-content:space-between; gap:16px; margin:26px 8px 6px; padding-top:34px;}
+.reg-sig span{
+  font-family:var(--stamp); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-mut); border-top:1px solid var(--ink); padding:7px 22px 0; text-align:center;
+}
+.reg-sheet-foot{margin-top:20px; text-align:right; font-family:var(--stamp); font-size:11px; color:var(--ink-mut); letter-spacing:.06em;}
 
 .hint{font-size:12px; color:var(--ink-mut); margin-top:8px; line-height:1.5;}
 
@@ -450,6 +546,24 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 }
 .toast.show{opacity:1;}
 
+@media print{
+  body{background:#fff!important; padding:0!important;}
+  .topbar,.bottomnav,.toast{display:none!important;}
+  .view{display:none!important; max-width:none!important; padding:0!important; margin:0!important;}
+  .view.active{display:block!important;}
+  .card{display:none!important;}
+  #registerResults{display:block!important; margin:0!important; padding:0!important; border:none!important; box-shadow:none!important; background:#fff!important;}
+  .reg-toolbar,.ledger-rule{display:none!important;}
+  .reg-sheet{background:#fff!important; border:none!important; padding:0 0 0 20px!important; border-radius:0!important;}
+  .reg-sheet::before{left:4px;}
+  .reg-title{border-bottom:none!important;}
+  .reg-index{page-break-after:always;}
+  .reg-section{page-break-before:always;}
+  .reg-table tr{page-break-inside:avoid;}
+  .reg-table td{border-bottom:1px solid #999!important;}
+}
+@page{ size:A4; margin:18mm 14mm; }
+
 @media (prefers-reduced-motion: reduce){
   .sheet, .sheet::before, .confirm-banner{animation:none!important;}
   .stamp{transition:none!important;}
@@ -468,35 +582,38 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
 <!-- DASHBOARD -->
 <div class="view active" id="view-dashboard">
-  <div class="stat-grid">
-    <div class="stat">
-      <div class="label">Issued &middot; this month</div>
-      <div class="value" id="statIssuedQty">–</div>
-      <div class="sub" id="statIssuedLines">– vouchers</div>
+  <div class="card pos-sheet">
+    <div class="pos-head">
+      <span class="ledger-stamp">Stock position</span>
+      <span class="pos-head-rule"></span>
+      <span class="pos-asof mono" id="posAsOf">as of today</span>
     </div>
-    <div class="stat">
-      <div class="label">Received &middot; this month</div>
-      <div class="value" id="statReceivedQty">–</div>
-      <div class="sub" id="statReceivedLines">– vouchers</div>
+    <div class="pos-grid">
+      <div class="pos-cell">
+        <span class="pos-label">Issued <span class="pos-sub">this year</span></span>
+        <span class="pos-value mono" id="posIssued">–</span>
+        <span class="pos-note">HRs issued to agencies</span>
+      </div>
+      <div class="pos-cell">
+        <span class="pos-label">Received <span class="pos-sub">this year</span></span>
+        <span class="pos-value mono" id="posReceived">–</span>
+        <span class="pos-note">HRs received into store</span>
+      </div>
+      <button type="button" class="pos-cell pos-link" id="posInStock" title="Open the ledger for materials in stock">
+        <span class="pos-label">In stock</span>
+        <span class="pos-value mono" id="posInStockVal">–</span>
+        <span class="pos-note">materials on hand &middot; open ledger</span>
+      </button>
+      <button type="button" class="pos-cell pos-link warn" id="posShort" title="Open the ledger for materials running short">
+        <span class="pos-label">Short</span>
+        <span class="pos-value mono" id="posShortVal">–</span>
+        <span class="pos-note">negative balance &middot; open ledger</span>
+      </button>
     </div>
   </div>
   <div class="card hidden" id="pendingCard">
     <h3>Awaiting voucher no.</h3>
     <div class="hint" id="pendingText"></div>
-  </div>
-  <div class="card ledger" id="ledgerCard">
-    <div class="ledger-head">
-      <span class="ledger-stamp">Stock ledger</span>
-      <div class="ledger-range">
-        <label for="ledFrom">From</label>
-        <input type="date" id="ledFrom">
-        <label for="ledTo">To</label>
-        <input type="date" id="ledTo">
-      </div>
-    </div>
-    <div class="ledger-rule"></div>
-    <div class="hint" id="ledgerMeta"></div>
-    <div id="ledgerChart"><div class="empty-state">Connect your sheet in Settings to see the stock ledger.</div></div>
   </div>
   <div class="card">
     <h3>Recent activity</h3>
@@ -561,7 +678,8 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
         <label for="woSearch">Find work order <span class="opt">(optional shortcut)</span></label>
         <div class="wo-finder">
           <div class="wo-finder-row">
-            <select id="woYear"></select>
+            <label for="woYear" class="sr-only">Work order year</label>
+            <select id="woYear" name="woYear"></select>
             <button type="button" id="btnSyncWo" class="ghost small" title="Re-read work orders from the master file">Sync</button>
             <div class="wo-search-wrap">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
@@ -605,42 +723,93 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 <!-- STOCK REGISTER -->
 <div class="view" id="view-register">
   <div class="card">
-    <h3>Stock Register</h3>
-    <div class="filter-grid">
-      <div><label>From</label><input type="date" id="regFrom"></div>
-      <div><label>To</label><input type="date" id="regTo"></div>
+    <h3>Stock register report</h3>
+    <div class="reg-scope" role="tablist" aria-label="Register grouping">
+      <button type="button" class="reg-scope-btn active" data-reg-view="agency" role="tab" aria-selected="true">Agency wise</button>
+      <button type="button" class="reg-scope-btn" data-reg-view="material" role="tab" aria-selected="false">Material wise</button>
     </div>
-    <label>Item code (optional)</label>
-    <input type="text" id="regItem" list="itemList" placeholder="Leave blank for all items">
+    <div class="filter-grid">
+      <div><label for="regFrom">From</label><input type="date" id="regFrom" name="regFrom"></div>
+      <div><label for="regTo">To</label><input type="date" id="regTo" name="regTo"></div>
+    </div>
+    <label for="regItem">Item code <span class="opt">(leave blank for all)</span></label>
+    <input type="text" id="regItem" name="regItem" list="itemList" placeholder="e.g. SM/01013">
     <datalist id="itemList"></datalist>
     <button type="button" class="primary" id="btnGenerateRegister">Generate register</button>
   </div>
   <div class="card hidden" id="registerResults">
-    <h3>Balances</h3>
+    <div class="reg-toolbar">
+      <span class="muted mono" id="regCount"></span>
+      <button type="button" class="ghost" id="btnRegPrint">Print / PDF</button>
+    </div>
+    <div class="ledger-rule"></div>
     <div id="registerBody"></div>
+  </div>
+</div>
+
+<!-- LEDGER -->
+<div class="view" id="view-ledger">
+  <div class="card ledger">
+    <div class="ledger-head">
+      <span class="ledger-stamp">Stock ledger</span>
+    </div>
+    <div class="ledger-filter">
+      <div class="lf-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+        <input type="text" id="ledSearch" aria-label="Search materials" placeholder="Search material (code or name)">
+      </div>
+      <div class="lf-grid">
+        <div class="lf-field"><label for="ledFrom">From</label><input type="date" id="ledFrom"></div>
+        <div class="lf-field"><label for="ledTo">To</label><input type="date" id="ledTo"></div>
+        <div class="lf-field"><label for="ledItem">Material</label>
+          <input type="text" id="ledItem" list="itemList" placeholder="All materials">
+        </div>
+        <div class="lf-field"><label for="ledPos">Position</label>
+          <select id="ledPos">
+            <option value="">All</option>
+            <option value="inStock">In stock</option>
+            <option value="short">Short</option>
+          </select>
+        </div>
+      </div>
+      <div class="lf-actions">
+        <button type="button" class="primary" id="btnLedApply">Apply</button>
+        <button type="button" class="secondary" id="btnLedClear">Reset</button>
+      </div>
+    </div>
+    <div class="ledger-rule"></div>
+    <div class="hint" id="ledgerMeta"></div>
+    <div id="ledgerChart"><div class="empty-state">Connect your sheet in Settings to see the stock ledger.</div></div>
   </div>
 </div>
 
 <!-- REPORTS -->
 <div class="view" id="view-reports">
   <div class="card">
-    <h3>Reports</h3>
-    <div class="filter-grid">
-      <div><label>From</label><input type="date" id="repFrom"></div>
-      <div><label>To</label><input type="date" id="repTo"></div>
+    <h3>Report generator</h3>
+    <div class="rep-scope" role="tablist" aria-label="Report scope">
+      <button type="button" class="rep-scope-btn active" data-scope="agency" role="tab" aria-selected="true">Agency</button>
+      <button type="button" class="rep-scope-btn" data-scope="workOrder" role="tab" aria-selected="false">Work order</button>
+      <button type="button" class="rep-scope-btn" data-scope="scheme" role="tab" aria-selected="false">Scheme</button>
     </div>
-    <label>Transaction type</label>
-    <select id="repType">
-      <option value="">All</option>
-      <option value="Issue">Issue</option>
-      <option value="Receipt">Receipt</option>
-    </select>
-    <label>Scheme code</label>
-    <input type="text" id="repScheme" list="schemeList" placeholder="Leave blank for all schemes">
-    <label>Search (agency, work, item, HR/voucher no.)</label>
-    <input type="text" id="repSearch" placeholder="Free text search">
-    <label class="check-label">
-      <input type="checkbox" id="repNoVoucher"> Only show lines missing a voucher no.
+    <div class="rep-field" data-scope="agency">
+      <label for="repAgency">Agency name <span class="opt">(part is fine)</span></label>
+      <input type="text" id="repAgency" name="repAgency" placeholder="e.g. Jogmaya Engineering">
+    </div>
+    <div class="rep-field hidden" data-scope="workOrder">
+      <label for="repWorkOrder">Work order no. <span class="opt">(part is fine)</span></label>
+      <input type="text" id="repWorkOrder" name="repWorkOrder" placeholder="e.g. 1247/BD-I">
+    </div>
+    <div class="rep-field hidden" data-scope="scheme">
+      <label for="repScheme">Scheme code</label>
+      <input type="text" id="repScheme" name="repScheme" list="schemeList" placeholder="Leave blank for all schemes">
+    </div>
+    <div class="filter-grid">
+      <div><label for="repFrom">From</label><input type="date" id="repFrom" name="repFrom"></div>
+      <div><label for="repTo">To</label><input type="date" id="repTo" name="repTo"></div>
+    </div>
+    <label class="check-label" for="repNoVoucher">
+      <input type="checkbox" id="repNoVoucher" name="repNoVoucher"> Only show lines missing a voucher no.
     </label>
     <button type="button" class="primary" id="btnRunReport">Run report</button>
     <button type="button" class="secondary hidden" id="btnExportCsv">Export CSV</button>
@@ -655,8 +824,8 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 <div class="view" id="view-settings">
   <div class="card">
     <h3>Connect your Google Sheet</h3>
-    <label>Apps Script Web App URL</label>
-    <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <label for="scriptUrl">Apps Script Web App URL</label>
+    <input type="text" id="scriptUrl" name="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
     <button type="button" class="primary" id="btnSaveUrl">Save & test connection</button>
     <div class="hint" id="settingsStatus"></div>
     <button type="button" class="secondary" id="btnRefreshMeta">Refresh master data</button>
@@ -695,6 +864,10 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   <button class="nav-btn" data-view="register">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z" stroke-linejoin="round"/><path d="M8 9h8M8 13h8M8 17h5" stroke-linecap="round"/></svg>
     <span>Register</span>
+  </button>
+  <button class="nav-btn" data-view="ledger">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" stroke-linejoin="round"/><path d="M8 8h8M8 12h8M8 16h5" stroke-linecap="round"/><path d="M16.5 18.5l2 2 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Ledger</span>
   </button>
   <button class="nav-btn" data-view="reports">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V9M12 19V5M19 19v-6" stroke-linecap="round"/></svg>
@@ -767,23 +940,30 @@ function applyStoreName(){
 function toast(msg){
   const t = $('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2200);
+  setTimeout(()=>t.classList.remove('show'), TOAST_MS);
 }
 
 /* ---------------- Navigation ---------------- */
+function goView(view){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  $('view-'+view).classList.add('active');
+  window.scrollTo({ top:0 });
+  if(view==='dashboard'){ loadDashboard(); }
+  if(view==='ledger'){ loadLedger(); }
+}
 document.querySelectorAll('.nav-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    btn.classList.add('active');
-    $('view-'+btn.dataset.view).classList.add('active');
-    if(btn.dataset.view==='dashboard'){ loadDashboard(); loadLedger(); }
-  });
+  btn.addEventListener('click', ()=>goView(btn.dataset.view));
 });
 
 /* ---------------- API helper ---------------- */
 const API_TIMEOUT = 20000;   // abort a hung request after 20s (cold start / flaky link)
 const API_MAX_IN_FLIGHT = 3; // don't stack parallel Apps Script calls (throttling/quota)
+const API_RETRY_DELAY_MS = 800;  // backoff before a single idempotent GET retry
+const TOAST_MS = 2200;           // toast auto-dismiss delay
+const SUGGEST_MAX = 30;          // cap for index-leaf / work-order result lists
+const WO_SEARCH_DEBOUNCE_MS = 350; // work-order finder keystroke debounce
+const IX_CLOSE_DELAY_MS = 120;     // delay before an autocomplete panel closes on blur
 
 let apiInFlight = 0;
 const apiWaiters = [];
@@ -829,7 +1009,7 @@ async function apiGet(action, params={}){
   }catch(err){
     // GET is idempotent: retry once after a timeout/network blip
     if(err && (err.name === 'AbortError' || /network|failed to fetch|load failed/i.test(err.message || ''))){
-      await new Promise(r=>setTimeout(r, 800));
+      await new Promise(r=>setTimeout(r, API_RETRY_DELAY_MS));
       return await apiFetch(url.toString());
     }
     throw err;
@@ -917,20 +1097,55 @@ function fmtDate(d){
   return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
 }
 
+/**
+ * One shared template for a transaction line (dashboard recent, report rows,
+ * register movement rows). opts:
+ *   showItem  — include the item description div (default false)
+ *   showVoucher — render VoucherNo, or the "+ Add voucher no." button when empty
+ *   showBadge — render the TransactionType badge (report rows only)
+ *   signed    — movement style: prefix qty with +/- and drop the unit
+ */
+function txnRowHTML(r, opts){
+  opts = opts || {};
+  const type = (r.TransactionType || r.type || '').toLowerCase();
+  const hr = r.HRNo || r.hrNo || '';
+  const qty = r.Qty != null ? r.Qty : r.qty;
+  const unit = r.Unit || r.unit || '';
+  const sign = opts.signed ? (type==='receipt'?'+':'-') : '';
+  const qtyTxt = opts.signed ? `${sign}${qty}` : `${qty} ${escapeHtml(unit)}`;
+  return `<div class="txn-row">
+    <div class="txn-main">
+      ${opts.showItem ? `<div class="item">${escapeHtml(r.ItemDescription)}</div>` : ''}
+      <span class="ticket ${type}">${escapeHtml(hr)}</span>
+      ${opts.showVoucher
+        ? (r.VoucherNo
+            ? `<span class="date">${escapeHtml(r.VoucherNo)}</span>`
+            : `<button type="button" class="ghost small add-voucher-btn" data-hr="${escapeHtml(hr)}">+ Add voucher no.</button>`)
+        : ''}
+    </div>
+    <div class="txn-side">
+      ${opts.showBadge ? `<span class="badge ${type}">${escapeHtml(r.TransactionType)}</span>` : ''}
+      <span class="qty">${qtyTxt}</span>
+      <span class="date">${fmtDate(r.Date || r.date)}</span>
+    </div>
+  </div>`;
+}
+
 /* ---------------- Dashboard ---------------- */
 async function loadDashboard(){
   if(!SCRIPT_URL) return;
   try{
     const d = await apiGet('dashboard');
-    $('statIssuedQty').textContent = d.monthIssuedQty;
-    $('statIssuedLines').textContent = d.monthIssuedLines + ' line(s)';
-    $('statReceivedQty').textContent = d.monthReceivedQty;
-    $('statReceivedLines').textContent = d.monthReceivedLines + ' line(s)';
+    $('posIssued').textContent = d.yearIssuedHrs;
+    $('posReceived').textContent = d.yearReceivedHrs;
+    $('posInStockVal').textContent = d.positiveStock;
+    $('posShortVal').textContent = d.negativeStock;
+    $('posAsOf').textContent = 'as of ' + fmtDate(new Date());
     const pendingCard = $('pendingCard');
     if(d.pendingVoucher > 0){
       pendingCard.classList.remove('hidden');
       $('pendingText').innerHTML =
-        `${d.pendingVoucher} line(s) don't have a voucher no. yet. Go to <b>Reports</b>, run a search, and tap "+ Add voucher no." on any row.`;
+        `${d.pendingVoucher} line(s) don't have a voucher no. yet. Go to <b>Reports</b>, run a report, and tap "+ Add voucher no." on any row.`;
     } else {
       pendingCard.classList.add('hidden');
     }
@@ -938,34 +1153,42 @@ async function loadDashboard(){
     if(!d.recent.length){
       list.innerHTML = '<div class="empty-state">No transactions yet.</div>';
     } else {
-      list.innerHTML = d.recent.map(r=>`
-        <div class="txn-row">
-          <div class="txn-main">
-            <div class="item">${escapeHtml(r.ItemDescription)}</div>
-            <span class="ticket ${r.TransactionType.toLowerCase()}">${escapeHtml(r.HRNo)}</span>
-          </div>
-          <div class="txn-side">
-            <span class="qty">${r.Qty} ${escapeHtml(r.Unit)}</span>
-            <span class="date">${fmtDate(r.Date)}</span>
-          </div>
-        </div>`).join('');
+      list.innerHTML = d.recent.map(r=>txnRowHTML(r, { showItem:true })).join('');
     }
   }catch(err){ /* silent on dashboard */ }
 }
+$('posInStock').addEventListener('click', ()=>openLedger({ from:'', to:todayStr(), position:'inStock' }));
+$('posShort').addEventListener('click', ()=>openLedger({ from:'', to:todayStr(), position:'short' }));
 
-/* ---------------- Stock ledger (dashboard chart) ---------------- */
+/* ---------------- Stock ledger (ruled register view) ---------------- */
 const CACHE_SREG_KEY = 'bdi_cache_sreg_';
 const CACHE_SREG_TTL = 10*60e3;  // ledger is per-range; server cache backs it up
 let ledgerItems = [];       // items from stockRegister (full range)
 let ledgerSel = null;       // Set of selected itemCodes
 let ledgerOpen = null;      // expanded itemCode or null
 
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function fmtQty(n){
   n = Number(n) || 0;
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 function ledgerRangeKey(){
   return CACHE_SREG_KEY + ($('ledFrom').value||'*') + '|' + ($('ledTo').value||'*');
+}
+function filterLedgerItems(){
+  const q = ($('ledSearch').value || '').trim().toLowerCase();
+  const itemCode = ($('ledItem').value || '').trim();
+  const pos = $('ledPos').value;
+  return ledgerItems.filter(it=>{
+    if(q && !String(it.itemCode||'').toLowerCase().includes(q) && !String(it.description||'').toLowerCase().includes(q)) return false;
+    if(itemCode && it.itemCode !== itemCode) return false;
+    if(pos==='inStock' && !(Number(it.closing) > 0)) return false;
+    if(pos==='short' && !(Number(it.closing) < 0)) return false;
+    return true;
+  });
 }
 function reconcileLedgerSel(){
   const codes = ledgerItems.map(i=>i.itemCode);
@@ -979,7 +1202,10 @@ function reconcileLedgerSel(){
 function updateLedgerMeta(){
   const from = $('ledFrom').value, to = $('ledTo').value;
   const range = (from?fmtDate(from):'Start') + ' — ' + (to?fmtDate(to):'Today');
-  $('ledgerMeta').textContent = ledgerItems.length + ' material(s) · ' + range;
+  const total = ledgerItems.length;
+  const shown = total ? filterLedgerItems().length : 0;
+  $('ledgerMeta').textContent = (total && shown!==total) ? shown + ' of ' + total + ' material(s) · ' + range
+    : (total ? total + ' material(s) · ' + range : '');
 }
 function barCell(cls, val, max, on){
   const pct = on ? Math.min(100, Math.round(Math.abs(val)/max*100)) : 0;
@@ -1012,20 +1238,26 @@ function ledgerDetailHTML(it){
 function syncLedgerCheckAll(){
   const all = $('ledgerCheckAll');
   if(!all) return;
-  const codes = ledgerItems.map(i=>i.itemCode);
+  const codes = filterLedgerItems().map(i=>i.itemCode);
   const sel = codes.filter(c=>ledgerSel.has(c));
   all.checked = codes.length>0 && sel.length===codes.length;
   all.indeterminate = sel.length>0 && sel.length<codes.length;
 }
 function renderLedger(){
   const chart = $('ledgerChart');
+  const visible = filterLedgerItems();
   if(!ledgerItems.length){
     chart.innerHTML = '<div class="empty-state">No transactions in this range.</div>';
     $('ledgerMeta').textContent = '';
     return;
   }
+  if(!visible.length){
+    chart.innerHTML = '<div class="empty-state">No materials match the current filters.</div>';
+    updateLedgerMeta();
+    return;
+  }
   reconcileLedgerSel();
-  const items = ledgerItems.slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
+  const items = visible.slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
   const max = items.reduce((m,it)=>Math.max(m, it.received, it.issued, Math.abs(it.closing)), 1);
   chart.innerHTML = `
     <div class="ldg-chart">
@@ -1041,7 +1273,7 @@ function renderLedger(){
           const on = ledgerSel.has(it.itemCode);
           const open = ledgerOpen===it.itemCode;
           return `<div class="ldg-row ${on?'':'off'} ${open?'open':''}" data-code="${escapeHtml(it.itemCode)}">
-            <div class="ldg-check"><input type="checkbox" data-sel="1" ${on?'checked':''}></div>
+            <div class="ldg-check"><input type="checkbox" name="ledgerSel" aria-label="Show ${escapeHtml(it.itemCode)}" data-sel="1" ${on?'checked':''}></div>
             <button type="button" class="ldg-id" data-open="1">
               <span class="ldg-code">${escapeHtml(it.itemCode)}</span>
               <span class="ldg-desc">${escapeHtml(it.description)}</span>
@@ -1058,7 +1290,7 @@ function renderLedger(){
     </div>`;
   const all = $('ledgerCheckAll');
   all.addEventListener('change', ()=>{
-    const items = ledgerItems.slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
+    const items = filterLedgerItems().slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
     ledgerSel = all.checked ? new Set(items.map(i=>i.itemCode)) : new Set();
     renderLedger();
   });
@@ -1094,14 +1326,33 @@ async function loadLedger(force){
     cacheWrite(key, data);
     ledgerItems = data.items || [];
     renderLedger();
-  }catch(err){ /* silent on dashboard */ }
+  }catch(err){ /* silent on ledger */ }
+}
+function openLedger(opts){
+  opts = opts || {};
+  if(opts.from != null) $('ledFrom').value = opts.from;
+  if(opts.to != null) $('ledTo').value = opts.to;
+  $('ledItem').value = opts.item || '';
+  $('ledPos').value = opts.position || '';
+  goView('ledger');
+  loadLedger();
 }
 (function initLedger(){
   const now = new Date();
   $('ledTo').valueAsDate = now;
   $('ledFrom').valueAsDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  $('ledFrom').addEventListener('change', ()=>loadLedger());
-  $('ledTo').addEventListener('change', ()=>loadLedger());
+  $('btnLedApply').addEventListener('click', ()=>loadLedger(true));
+  $('btnLedClear').addEventListener('click', ()=>{
+    $('ledSearch').value = '';
+    $('ledItem').value = '';
+    $('ledPos').value = '';
+    $('ledTo').valueAsDate = new Date();
+    $('ledFrom').valueAsDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    loadLedger(true);
+  });
+  $('ledSearch').addEventListener('input', renderLedger);
+  $('ledItem').addEventListener('change', renderLedger);
+  $('ledPos').addEventListener('change', renderLedger);
 })();
 
 /* ---------------- New Entry ---------------- */
@@ -1199,7 +1450,7 @@ async function revalidateWoIndex(year, seq){
 $('woSearch').addEventListener('input', ()=>{
   $('woResults').classList.remove('open');
   clearTimeout(woSearchTimer);
-  woSearchTimer = setTimeout(runWoSearch, 350);
+  woSearchTimer = setTimeout(runWoSearch, WO_SEARCH_DEBOUNCE_MS);
 });
 $('woYear').addEventListener('change', ()=>{ prefetchWoIndex(); runWoSearch(); });
 $('btnSyncWo').addEventListener('click', async ()=>{
@@ -1235,7 +1486,7 @@ async function runWoSearch(){
   }
   if(idx && idx.rows){
     if(idx.stale) revalidateWoIndex(year, seq);
-    paintWoResults(results, filterWoRows(idx.rows, q).slice(0,30), q, year, seq);
+    paintWoResults(results, filterWoRows(idx.rows, q).slice(0, SUGGEST_MAX), q, year, seq);
     return;
   }
   // Slow path: download the year index once, then search locally
@@ -1250,25 +1501,28 @@ async function runWoSearch(){
     }
     woIndex = { year, rows: data.rows, stale: false };
     cacheWrite(woIndexKey(year), data.rows);
-    paintWoResults(results, filterWoRows(data.rows, q).slice(0,30), q, year, seq);
+    paintWoResults(results, filterWoRows(data.rows, q).slice(0, SUGGEST_MAX), q, year, seq);
   }catch(err){
     if(seq !== woSeq) return;
-    // Fallback: legacy server-side free-text search
-    try{
-      const d = await apiGet('workOrders', { year, q });
-      if(seq !== woSeq) return;
-      if(!d.rows || !d.rows.length){
-        results.innerHTML = ixHead('Work order index') +
-          `<div class="ix-empty">${escapeHtml(d.note || 'No matches for “' + escapeHtml(q) + '” in ' + year + '.')}</div>`;
-        results.classList.add('open');
-        return;
-      }
-      paintWoResults(results, d.rows, q, year, seq);
-    }catch(err2){
-      if(seq !== woSeq) return;
-      results.innerHTML = ixHead('Work order index') + `<div class="ix-empty">${escapeHtml(err2.message)}</div>`;
+    await runLegacyWoSearch(results, q, year, seq);
+  }
+}
+
+async function runLegacyWoSearch(results, q, year, seq){
+  try{
+    const d = await apiGet('workOrders', { year, q });
+    if(seq !== woSeq) return;
+    if(!d.rows || !d.rows.length){
+      results.innerHTML = ixHead('Work order index') +
+        `<div class="ix-empty">${escapeHtml(d.note || 'No matches for “' + escapeHtml(q) + '” in ' + year + '.')}</div>`;
       results.classList.add('open');
+      return;
     }
+    paintWoResults(results, d.rows, q, year, seq);
+  }catch(err2){
+    if(seq !== woSeq) return;
+    results.innerHTML = ixHead('Work order index') + `<div class="ix-empty">${escapeHtml(err2.message)}</div>`;
+    results.classList.add('open');
   }
 }
 $('woSearch').addEventListener('keydown', (e)=>{
@@ -1294,7 +1548,7 @@ $('woSearch').addEventListener('keydown', (e)=>{
   rows[idx].classList.add('active');
   revealRow(results, rows[idx]);
 });
-$('woSearch').addEventListener('blur', ()=>setTimeout(()=>$('woResults').classList.remove('open'), 120));
+$('woSearch').addEventListener('blur', ()=>setTimeout(()=>$('woResults').classList.remove('open'), IX_CLOSE_DELAY_MS));
 $('woResults').addEventListener('mousedown', (e)=>e.preventDefault());
 
 const fSchemeCode = $('fSchemeCode');
@@ -1326,7 +1580,7 @@ function bindIndexLeaf(input, panel, cfg){
     if(!q || !list.length){ close(); return; }
     const matches = list
       .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
-      .slice(0, 30);
+      .slice(0, SUGGEST_MAX);
     panel.innerHTML = matches.length
       ? ixHead(cfg.title, matches.length) + matches.map(s=>`
         <div class="ix-row" data-code="${escapeHtml(cfg.codeOf(s))}">
@@ -1339,7 +1593,7 @@ function bindIndexLeaf(input, panel, cfg){
   const select = row => { cfg.onSelect(row.dataset.code); close(); };
   input.addEventListener('input', ()=>{ if(cfg.onInput) cfg.onInput(); render(); });
   input.addEventListener('focus', render);
-  input.addEventListener('blur', ()=>setTimeout(close, 120));
+  input.addEventListener('blur', ()=>setTimeout(close, IX_CLOSE_DELAY_MS));
   panel.addEventListener('mousedown', (e)=>e.preventDefault());
   panel.addEventListener('click', (e)=>{
     const row = e.target.closest('.ix-row');
@@ -1396,6 +1650,14 @@ function renumberItemLines(){
   });
 }
 
+function applyItemSelection(div, code){
+  const match = META.items.find(i=>i.itemCode===code);
+  if(match){
+    div.querySelector('.li-desc').value = match.description;
+    div.querySelector('.li-unit').value = match.unit;
+  }
+}
+
 function addItemLine(){
   lineCounter++;
   const id = lineCounter;
@@ -1408,15 +1670,15 @@ function addItemLine(){
       <button type="button" class="remove-line" aria-label="Remove line">&times;</button>
     </div>
     <div class="field-wrap">
-      <label>Item code</label>
-      <input type="text" class="li-code" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="itemSuggest${id}">
+      <label for="li-code-${id}">Item code</label>
+      <input type="text" id="li-code-${id}" name="itemCode" class="li-code" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="itemSuggest${id}">
       <div class="ix-panel" id="itemSuggest${id}"></div>
     </div>
-    <label>Description</label>
-    <input type="text" class="li-desc" placeholder="Item description">
+    <label for="li-desc-${id}">Description</label>
+    <input type="text" id="li-desc-${id}" name="itemDescription" class="li-desc" placeholder="Item description">
     <div class="item-line-grid">
-      <div><label>Quantity</label><input type="number" class="li-qty" step="any" min="0"></div>
-      <div><label>Unit</label><input type="text" class="li-unit" placeholder="No(s). / Mtr."></div>
+      <div><label for="li-qty-${id}">Quantity</label><input type="number" id="li-qty-${id}" name="qty" class="li-qty" step="any" min="0"></div>
+      <div><label for="li-unit-${id}">Unit</label><input type="text" id="li-unit-${id}" name="unit" class="li-unit" placeholder="No(s). / Mtr."></div>
     </div>`;
   div.querySelector('.remove-line').addEventListener('click', ()=>{
     div.remove();
@@ -1427,21 +1689,8 @@ function addItemLine(){
     list: ()=>META.items,
     codeOf: i=>i.itemCode,
     nameOf: i=>i.description,
-    onInput(){
-      const match = META.items.find(i=>i.itemCode===div.querySelector('.li-code').value);
-      if(match){
-        div.querySelector('.li-desc').value = match.description;
-        div.querySelector('.li-unit').value = match.unit;
-      }
-    },
-    onSelect(code){
-      div.querySelector('.li-code').value = code;
-      const match = META.items.find(i=>i.itemCode===code);
-      if(match){
-        div.querySelector('.li-desc').value = match.description;
-        div.querySelector('.li-unit').value = match.unit;
-      }
-    }
+    onInput(){ applyItemSelection(div, div.querySelector('.li-code').value); },
+    onSelect(code){ div.querySelector('.li-code').value = code; applyItemSelection(div, code); }
   });
   $('itemLines').appendChild(div);
   renumberItemLines();
@@ -1503,58 +1752,233 @@ $('btnSubmit').addEventListener('click', async ()=>{
   }
 });
 
-/* ---------------- Stock Register ---------------- */
+/* ---------------- Register report (ruled register sheet) ---------------- */
+const REG_TITLE_KEY = 'bdi_reg_title';
+let regView = 'agency';
+let regRows = [];
+let regBalances = [];
+
+document.querySelectorAll('.reg-scope-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    regView = btn.dataset.regView;
+    document.querySelectorAll('.reg-scope-btn').forEach(b=>{
+      const on = b===btn;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+  });
+});
+
+function regNum(n){
+  if(n==null || n==='' || isNaN(Number(n))) return '';
+  return String(Number.parseFloat(Number(n).toFixed(10)));
+}
+function regRowsSorted(rows){
+  return rows.slice().sort((a,b)=>
+    (a.Date===b.Date ? (Number(a.SlNo)||0) - (Number(b.SlNo)||0) : new Date(a.Date) - new Date(b.Date)));
+}
+function regRemarks(r){
+  return [ r.VoucherNo && 'Voucher: '+r.VoucherNo,
+           r.OfficeOrderNo && 'O.O.: '+r.OfficeOrderNo,
+           r.RoadChallanNo && 'Challan: '+r.RoadChallanNo ].filter(Boolean).join('<br>');
+}
+function regSigHTML(){
+  return `<div class="reg-sig"><span>Sign of JE</span><span>Sign of AE</span><span>Sign of EE</span></div>`;
+}
+function regIndexHTML(entries){
+  return `<div class="reg-index"><h3>Index</h3>` +
+    entries.map((e,i)=>`
+      <div class="reg-index-entry">
+        <span class="rie-text">${i+1}. ${escapeHtml(e.label)}</span>
+        <span class="rie-dots"></span>
+        <span class="rie-page"></span>
+      </div>`).join('') + '</div>';
+}
+function regTableHTML(type, rows, opts){
+  const label = (type==='Receipt') ? 'Received' : 'Issued';
+  const cls = (type==='Receipt') ? 'rcv' : 'iss';
+  const rowsHTML = rows.map((r,idx)=>{
+    const cumulative = opts.cumulative ? opts.cumulative(r) : '';
+    return `<tr>
+      <td>${escapeHtml(fmtDate(r.Date))}</td>
+      <td>${opts.particulars(r)}</td>
+      <td class="dim">${escapeHtml(r.HRNo||'')}</td>
+      <td class="num ${cls}">${regNum(r.Qty)}</td>
+      <td class="num">${cumulative}</td>
+      <td class="dim">${regRemarks(r)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="reg-sub ${cls}">${label}</div>
+    <table class="reg-table">
+      <thead><tr>
+        <th>Date</th><th>Particulars</th><th>HR No.</th>
+        <th class="num ${cls}">Qty. ${label}</th><th class="num">Cumulative</th><th>Remarks</th>
+      </tr></thead>
+      <tbody>${rowsHTML || `<tr><td colspan="6" class="dim">No ${label.toLowerCase()} movements.</td></tr>`}</tbody>
+    </table>`;
+}
+function regAgencySheet(rows, balances){
+  const grouped = {};
+  rows.forEach(r=>{
+    const key = String(r.AgencyDetails||'').trim().toLowerCase();
+    if(!key) return;
+    if(!grouped[key]) grouped[key] = { label: r.AgencyDetails.trim(), rcv: [], iss: [] };
+    grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
+  });
+  const keys = Object.keys(grouped).sort((a,b)=>grouped[a].label.localeCompare(grouped[b].label));
+  const particulars = r=>[r.ItemDescription, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const sections = keys.map((k,i)=>{
+    const g = grouped[k];
+    const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
+    const rcvCum = {}, issCum = {};
+    const rcvTbl = regTableHTML('Receipt', rcvRows, {
+      particulars,
+      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); rcvCum[m]=(rcvCum[m]||0)+(Number(r.Qty)||0); return regNum(rcvCum[m]); }
+    });
+    const issTbl = regTableHTML('Issue', issRows, {
+      particulars,
+      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); issCum[m]=(issCum[m]||0)+(Number(r.Qty)||0); return regNum(issCum[m]); }
+    });
+    const byMat = {};
+    g.rcv.concat(g.iss).forEach(r=>{
+      const m = String(r.ItemDescription||'').trim().toLowerCase();
+      if(!byMat[m]) byMat[m] = { label: r.ItemDescription, rcv:0, iss:0 };
+      if(r.TransactionType==='Receipt') byMat[m].rcv += Number(r.Qty)||0;
+      else byMat[m].iss += Number(r.Qty)||0;
+    });
+    const sumRows = Object.keys(byMat).sort((a,b)=>byMat[a].label.localeCompare(byMat[b].label)).map(m=>{
+      const it = byMat[m];
+      return `<tr><td>${escapeHtml(it.label)}</td><td class="num rec">${regNum(it.rcv)}</td><td class="num iss">${regNum(it.iss)}</td></tr>`;
+    }).join('');
+    return `<div class="reg-section">
+      <h3>${i+1}. ${escapeHtml(g.label)}</h3>
+      ${rcvTbl}${issTbl}
+      <div class="reg-sub">Summary</div>
+      <table class="reg-table">
+        <thead><tr><th>Material</th><th class="num rcv">Total received</th><th class="num iss">Total issued</th></tr></thead>
+        <tbody>${sumRows || '<tr><td colspan="3" class="dim">No movements.</td></tr>'}</tbody>
+      </table>
+      ${regSigHTML()}
+    </div>`;
+  });
+  return regIndexHTML(keys.map(k=>({ label: grouped[k].label }))) + sections.join('');
+}
+function regMaterialSheet(rows, balances){
+  const grouped = {};
+  rows.forEach(r=>{
+    const key = String(r.ItemCode||'').trim();
+    if(!key) return;
+    if(!grouped[key]) grouped[key] = { label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] };
+    grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
+  });
+  const keys = Object.keys(grouped).sort((a,b)=>(grouped[a].label||a).localeCompare(grouped[b].label||b));
+  const particulars = r=>[r.AgencyDetails, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const sections = keys.map((k,i)=>{
+    const g = grouped[k];
+    const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
+    let cum = 0, cumIss = 0;
+    const rcvTbl = regTableHTML('Receipt', rcvRows, {
+      particulars,
+      cumulative: r=>{ cum += Number(r.Qty)||0; return regNum(cum); }
+    });
+    const issTbl = regTableHTML('Issue', issRows, {
+      particulars,
+      cumulative: r=>{ cumIss += Number(r.Qty)||0; return regNum(cumIss); }
+    });
+    const bal = balances.find(b=>b.itemCode===k) || { opening:0, received:0, issued:0, closing:0 };
+    return `<div class="reg-section">
+      <h3>${i+1}. ${escapeHtml(g.label||k)} <span class="code">${escapeHtml(k)}${g.unit ? ' · '+escapeHtml(g.unit) : ''}</span></h3>
+      ${rcvTbl}${issTbl}
+      <div class="reg-sub">Position</div>
+      <table class="reg-table">
+        <thead><tr><th>Item</th><th class="num">Opening</th><th class="num rcv">Received</th><th class="num iss">Issued</th><th class="num">Closing</th></tr></thead>
+        <tbody><tr>
+          <td>${escapeHtml(g.label||k)}</td>
+          <td class="num">${regNum(bal.opening)}</td>
+          <td class="num rec">${regNum(bal.received)}</td>
+          <td class="num iss">${regNum(bal.issued)}</td>
+          <td class="num">${regNum(bal.closing)}</td>
+        </tr></tbody>
+      </table>
+      ${regSigHTML()}
+    </div>`;
+  });
+  return regIndexHTML(keys.map(k=>({ label: (grouped[k].label||k) }))) + sections.join('');
+}
+function regSheetHTML(bodyHTML, meta){
+  return `<div class="reg-sheet">
+    <div class="reg-sheet-head">
+      <div class="reg-kicker">${escapeHtml(OFFICE_NAME)} — Store</div>
+      <div class="reg-title" id="regTitle" contenteditable="true" spellcheck="false">${escapeHtml(localStorage.getItem(REG_TITLE_KEY) || 'Material stock register')}</div>
+      <div class="reg-meta">Period: <b>${meta.from ? fmtDate(meta.from) : 'From start'}</b> to <b>${meta.to ? fmtDate(meta.to) : 'Today'}</b>${meta.item ? ' · Item: <b>'+escapeHtml(meta.item)+'</b>' : ''}</div>
+    </div>
+    ${bodyHTML}
+    <div class="reg-sheet-foot">Prepared from the store register · ${escapeHtml(STORE_NAME)}</div>
+  </div>`;
+}
+function bindRegTitle(){
+  const t = $('regTitle');
+  if(!t) return;
+  t.addEventListener('blur', ()=>localStorage.setItem(REG_TITLE_KEY, t.textContent.trim()));
+}
+$('btnRegPrint').addEventListener('click', ()=>{ window.print(); });
 $('btnGenerateRegister').addEventListener('click', async ()=>{
+  const btn = $('btnGenerateRegister');
+  btn.disabled = true; btn.textContent = 'Building register…';
   const from = $('regFrom').value;
   const to = $('regTo').value;
   const itemCode = $('regItem').value.trim();
   try{
-    const data = await apiGet('stockRegister', {from, to, itemCode});
+    const params = { from, to, itemCode };
+    const [listData, sregData] = await Promise.all([
+      apiGet('list', params),
+      apiGet('stockRegister', params)
+    ]);
+    regRows = listData.rows || [];
+    regBalances = sregData.items || [];
     const wrap = $('registerResults');
     const body = $('registerBody');
     wrap.classList.remove('hidden');
-    if(!data.items.length){
-      body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements in this range.</div>';
+    if(!regRows.length){
+      body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements in this range. Widen the dates or clear the item code.</div>';
+      $('regCount').textContent = '';
       return;
     }
-    body.innerHTML = data.items.map(it=>`
-      <div class="item-block">
-        <div class="item-block-head">
-          <span class="code">${escapeHtml(it.itemCode)}</span>
-          <span class="desc">${escapeHtml(it.unit)}</span>
-        </div>
-        <div class="desc">${escapeHtml(it.description)}</div>
-        <div class="balance-grid">
-          <div class="b"><div class="n">${it.opening}</div><div class="l">Opening</div></div>
-          <div class="b"><div class="n">${it.received}</div><div class="l">Received</div></div>
-          <div class="b"><div class="n">${it.issued}</div><div class="l">Issued</div></div>
-          <div class="b"><div class="n">${it.closing}</div><div class="l">Closing</div></div>
-        </div>
-        ${it.movements.map(m=>`
-          <div class="txn-row">
-            <div class="txn-main">
-              <span class="ticket ${m.type.toLowerCase()}">${escapeHtml(m.hrNo)}</span>
-            </div>
-            <div class="txn-side">
-              <span class="qty">${m.type==='Receipt'?'+':'-'}${m.qty}</span>
-              <span class="date">${fmtDate(m.date)}</span>
-            </div>
-          </div>`).join('')}
-      </div>`).join('');
+    const bodyHTML = (regView==='agency')
+      ? regAgencySheet(regRows, regBalances)
+      : regMaterialSheet(regRows, regBalances);
+    body.innerHTML = regSheetHTML(bodyHTML, { from, to, item: itemCode });
+    $('regCount').textContent = regRows.length + ' line(s) · ' + new Set(regRows.map(r=>r.ItemCode)).size + ' material(s)';
+    bindRegTitle();
   }catch(err){ toast('Error: ' + err.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Generate register'; }
 });
 
-/* ---------------- Reports ---------------- */
+/* ---------------- Reports (stamp-based report generator) ---------------- */
 let lastReportRows = [];
+let repScope = 'agency';
+
+document.querySelectorAll('.rep-scope-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    repScope = btn.dataset.scope;
+    document.querySelectorAll('.rep-scope-btn').forEach(b=>{
+      const on = b===btn;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('.rep-field').forEach(f=>f.classList.toggle('hidden', f.dataset.scope!==repScope));
+  });
+});
+
 $('btnRunReport').addEventListener('click', async ()=>{
   const params = {
     from: $('repFrom').value,
     to: $('repTo').value,
-    type: $('repType').value,
-    schemeCode: $('repScheme').value.trim(),
-    q: $('repSearch').value.trim(),
     noVoucherOnly: $('repNoVoucher').checked ? 'true' : ''
   };
+  if(repScope==='agency') params.agency = $('repAgency').value.trim();
+  if(repScope==='workOrder') params.workOrder = $('repWorkOrder').value.trim();
+  if(repScope==='scheme') params.schemeCode = $('repScheme').value.trim();
   try{
     const data = await apiGet('list', params);
     lastReportRows = data.rows;
@@ -1567,21 +1991,7 @@ $('btnRunReport').addEventListener('click', async ()=>{
       body.innerHTML = '<div class="empty-state">No matching transactions.</div>';
       return;
     }
-    body.innerHTML = data.rows.map(r=>`
-      <div class="txn-row">
-        <div class="txn-main">
-          <div class="item">${escapeHtml(r.ItemDescription)}</div>
-          <span class="ticket ${r.TransactionType.toLowerCase()}">${escapeHtml(r.HRNo)}</span>
-          ${r.VoucherNo
-            ? `<span class="date">${escapeHtml(r.VoucherNo)}</span>`
-            : `<button type="button" class="ghost small add-voucher-btn" data-hr="${escapeHtml(r.HRNo)}">+ Add voucher no.</button>`}
-        </div>
-        <div class="txn-side">
-          <span class="badge ${r.TransactionType.toLowerCase()}">${r.TransactionType}</span>
-          <span class="qty">${r.Qty} ${escapeHtml(r.Unit)}</span>
-          <span class="date">${fmtDate(r.Date)}</span>
-        </div>
-      </div>`).join('');
+    body.innerHTML = data.rows.map(r=>txnRowHTML(r, { showItem:true, showVoucher:true, showBadge:true })).join('');
     document.querySelectorAll('.add-voucher-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const hrNo = btn.dataset.hr;
@@ -1620,7 +2030,6 @@ if(SCRIPT_URL){
     $('syncDot').classList.remove('off');
     updateMetaCacheStatus();
     loadDashboard();
-    loadLedger();
   }).catch(()=>{});
   prefetchWoIndex();
 }

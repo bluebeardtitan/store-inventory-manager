@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Material Stock Register — Standalone Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{
+  --desk:#202A3A;
+  --desk-raise:#29354C;
+  --paper:#F2EBD7;
+  --sheet:#F8F3E4;
+  --ink:#1E2940;
+  --ink-mut:#5C6677;
+  --rule:#CDD3DE;
+  --rule-strong:#A9B3C6;
+  --margin:#B23A2A;
+  --receipt:#2F6F4A;
+  --shadow:0 16px 34px -18px rgba(8,13,26,.6);
+  --disp:'Barlow Condensed',sans-serif;
+  --body:'Public Sans',sans-serif;
+  --stamp:'Special Elite',monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+.hidden{display:none!important;}
+body{
+  background:radial-gradient(1100px 520px at 78% -8%, #2B3852 0%, rgba(32,42,58,0) 62%), var(--desk);
+  color:var(--ink);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  padding-bottom:56px;
+}
+h1,h2,h3{font-family:var(--disp);}
+.mono{font-family:var(--stamp);}
+.muted{color:var(--ink-mut);}
+.page{max-width:920px; margin:0 auto; padding:18px 14px 28px;}
+.card{
+  background:var(--sheet); border:1px solid #E2D9BC; border-radius:4px;
+  padding:18px; box-shadow:var(--shadow); margin-bottom:16px;
+}
+.panel-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+.panel-head h1{
+  font-family:var(--disp); font-weight:700; font-size:30px; line-height:1.02;
+  text-transform:uppercase; letter-spacing:.015em; margin:7px 0 6px;
+}
+.badge{
+  font-family:var(--stamp); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-mut); border:1.5px dashed var(--rule-strong); border-radius:3px; padding:6px 10px;
+  white-space:nowrap;
+}
+.hint{font-size:12px; color:var(--ink-mut); line-height:1.5; margin:6px 0 14px;}
+label{display:block; font-size:11px; font-weight:600; color:var(--ink-mut); text-transform:uppercase; letter-spacing:.07em; margin:14px 0 6px;}
+input[type=text],input[type=date]{
+  width:100%; padding:10px 11px; border:1px solid var(--rule-strong); border-radius:3px;
+  background:#FFFDF5; color:var(--ink); font-family:var(--body); font-size:13.5px;
+}
+input:focus{outline:none; border-color:var(--ink);}
+button.primary{
+  width:100%; padding:14px 14px; margin-top:14px;
+  border:1px solid var(--ink); border-radius:3px; background:var(--ink); color:var(--sheet);
+  font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.12em;
+  text-transform:uppercase; cursor:pointer;
+}
+button.primary:hover{background:#16203A;}
+button.primary:disabled{opacity:.55; cursor:default;}
+button.ghost{
+  padding:11px 16px; border:1.5px dashed var(--rule-strong); border-radius:3px; background:transparent;
+  color:var(--ink); font-weight:600; font-size:13.5px; cursor:pointer; margin-top:12px;
+}
+button.ghost:hover{border-color:var(--ink);}
+.reg-scope{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:14px 0 6px;}
+.reg-scope-btn{
+  padding:11px 6px 9px; border:1.5px solid var(--rule-strong); border-radius:3px;
+  background:transparent; color:var(--ink-mut); font-family:var(--stamp); font-size:13px;
+  text-transform:uppercase; letter-spacing:.08em; cursor:pointer;
+  transition:background .15s, color .15s, border-color .15s, transform .12s;
+}
+.reg-scope-btn:hover{border-color:var(--ink); color:var(--ink);}
+.reg-scope-btn:active{transform:translateY(1px);}
+.reg-scope-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
+.filter-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
+.actions{display:flex; gap:10px; align-items:center;}
+.actions button{flex:1;}
+.actions button.ghost{flex:0 0 auto; padding:14px 18px; margin-top:14px;}
+.status{display:block; font-size:12px; color:var(--ink-mut); margin-top:10px; min-height:16px;}
+.ledger-rule{height:1.5px; background:var(--rule-strong); margin:16px 0 18px; position:relative;}
+.ledger-rule::after{content:''; position:absolute; left:0; right:0; top:3px; height:1px; background:var(--rule);}
+.cfg-row{display:flex; gap:8px; align-items:flex-end;}
+.cfg-row .fld{flex:1;}
+.cfg-row button{margin:0;}
+
+/* ---- The ruled register sheet (shared with the app) ---- */
+.reg-sheet{
+  position:relative;
+  background-color:var(--sheet);
+  background-image:repeating-linear-gradient(to bottom, transparent 0 26px, rgba(30,41,64,.035) 26px 27px);
+  border:1px solid #E2D9BC;
+  border-radius:2px;
+  padding:30px 18px 34px 44px;
+  color:var(--ink);
+}
+.reg-sheet::before{
+  content:''; position:absolute; left:22px; top:0; bottom:0; width:2px;
+  background:var(--margin);
+}
+.reg-sheet-head{border-bottom:1.5px solid var(--rule-strong); padding-bottom:14px; margin-bottom:4px;}
+.reg-kicker{font-family:var(--stamp); font-size:11.5px; letter-spacing:.04em; color:var(--margin);}
+.reg-title{
+  font-family:var(--disp); font-weight:700; font-size:30px; line-height:1.02;
+  text-transform:uppercase; letter-spacing:.015em; margin:7px 0 6px; outline:none;
+  border-bottom:1px dashed transparent;
+}
+.reg-title:hover{border-bottom-color:var(--rule-strong);}
+.reg-title:focus{border-bottom-color:var(--margin);}
+.reg-meta{font-size:11.5px; color:var(--ink-mut); letter-spacing:.03em;}
+.reg-meta b{color:var(--ink); font-weight:600;}
+.reg-index{padding:14px 2px 6px;}
+.reg-index h3,.reg-section > h3{
+  font-family:var(--stamp); font-weight:400; font-size:13px;
+  text-transform:uppercase; letter-spacing:.12em; color:var(--ink); margin:0 0 10px;
+}
+.reg-index-entry{display:flex; align-items:flex-end; gap:8px; padding:3px 0; font-size:13.5px;}
+.reg-index-entry .rie-text{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;}
+.reg-index-entry .rie-dots{flex:1; border-bottom:1px dotted var(--ink-mut); height:1px; margin-bottom:5px;}
+.reg-index-entry .rie-page{width:38px; height:15px; border:1px solid var(--ink); flex-shrink:0;}
+.reg-section{padding-top:18px;}
+.reg-section > h3 .code{color:var(--ink-mut); font-family:var(--body); font-size:11px; letter-spacing:.06em; text-transform:none;}
+.reg-sub{font-family:var(--stamp); font-size:12px; letter-spacing:.1em; text-transform:uppercase; margin:14px 0 6px;}
+.reg-sub.rcv{color:var(--receipt);}
+.reg-sub.iss{color:var(--margin);}
+.reg-table{width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:16px;}
+.reg-table th{
+  font-family:var(--disp); font-weight:600; font-size:11.5px;
+  text-transform:uppercase; letter-spacing:.07em;
+  border-bottom:1.5px solid var(--ink); padding:6px 8px; text-align:left; white-space:nowrap;
+}
+.reg-table th.rcv{color:var(--receipt); border-bottom-color:var(--receipt);}
+.reg-table th.iss{color:var(--margin); border-bottom-color:var(--margin);}
+.reg-table td{padding:6px 8px; border-bottom:1px solid var(--rule); vertical-align:top;}
+.reg-table tr:last-child td{border-bottom:1.5px solid var(--ink);}
+.reg-table td.num,.reg-table th.num{text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums;}
+.reg-table td.num{font-family:var(--disp); font-weight:500; font-size:13.5px;}
+.reg-table td.dim{color:var(--ink-mut);}
+.reg-table .rec{color:var(--receipt);}
+.reg-table .iss{color:var(--margin);}
+.reg-sig{display:flex; justify-content:space-between; gap:16px; margin:26px 8px 6px; padding-top:34px;}
+.reg-sig span{
+  font-family:var(--stamp); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-mut); border-top:1px solid var(--ink); padding:7px 22px 0; text-align:center;
+}
+.reg-sheet-foot{margin-top:20px; text-align:right; font-family:var(--stamp); font-size:11px; color:var(--ink-mut); letter-spacing:.06em;}
+.empty-state{text-align:center; padding:36px 12px; color:var(--ink-mut); font-size:13.5px;}
+.empty-state .sig{font-family:var(--stamp); font-size:28px; color:var(--rule-strong); margin-bottom:8px;}
+
+@media print{
+  body{background:#fff!important;}
+  .card{display:none!important;}
+  .reg-sheet{background:#fff!important; border:none!important; padding:0 0 0 20px!important; border-radius:0!important;}
+  .reg-sheet::before{left:4px;}
+  .reg-title{border-bottom:none!important;}
+  .reg-index{page-break-after:always;}
+  .reg-section{page-break-before:always;}
+  .reg-table tr{page-break-inside:avoid;}
+  .reg-table td{border-bottom:1px solid #999!important;}
+}
+@page{ size:A4; margin:18mm 14mm; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="card">
+    <div class="panel-head">
+      <div>
+        <div class="reg-kicker">Berhampore Division-I · PHE — Store</div>
+        <h1>Material stock register</h1>
+      </div>
+      <span class="badge">Standalone report</span>
+    </div>
+    <p class="hint">Generates the ruled register report straight from the same Apps Script web app and Google Sheet as the main store app. Reads the script URL from this browser's storage.</p>
+
+    <div class="cfg-row">
+      <div class="fld">
+        <label for="scriptUrl">Apps Script URL</label>
+        <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+      <button type="button" class="ghost" id="btnSaveUrl">Save</button>
+    </div>
+    <span class="status" id="status"></span>
+
+    <div class="reg-scope" role="tablist" aria-label="Register grouping">
+      <button type="button" class="reg-scope-btn active" data-reg-view="agency" role="tab" aria-selected="true">Agency wise</button>
+      <button type="button" class="reg-scope-btn" data-reg-view="material" role="tab" aria-selected="false">Material wise</button>
+    </div>
+
+    <div class="filter-grid">
+      <div><label for="from">From</label><input type="date" id="from"></div>
+      <div><label for="to">To</label><input type="date" id="to"></div>
+      <div><label for="item">Item code</label><input type="text" id="item" list="items" placeholder="All materials"><datalist id="items"></datalist></div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="primary" id="generate">Generate register</button>
+      <button type="button" class="ghost" id="printBtn">Print / PDF</button>
+    </div>
+  </div>
+
+  <div id="output"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let currentView = 'agency';
+let SCRIPT_URL = '';
+try{ SCRIPT_URL = localStorage.getItem('bdi_store_script_url') || ''; }catch(e){}
+function storeName(){ try{ return localStorage.getItem('bdi_store_name') || 'Store Register'; }catch(e){ return 'Store Register'; } }
+function officeName(){ try{ return localStorage.getItem('bdi_office_name') || 'Berhampore Division-I \u00B7 PHE'; }catch(e){ return 'Berhampore Division-I \u00B7 PHE'; } }
+
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(d){
+  const dt = new Date(d);
+  if(isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+async function apiGet(action, params={}){
+  if(!SCRIPT_URL) throw new Error('Set your Apps Script URL above first.');
+  const url = new URL(SCRIPT_URL);
+  url.searchParams.set('action', action);
+  Object.entries(params).forEach(([k,v])=>{ if(v) url.searchParams.set(k,v); });
+  const res = await fetch(url.toString());
+  let data;
+  try{ data = await res.json(); }
+  catch(e){ throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the URL and the web-app deployment.'); }
+  if(data && data.error) throw new Error(data.error);
+  return data;
+}
+
+async function loadItems(){
+  if(!SCRIPT_URL) return;
+  try{
+    const m = await apiGet('meta');
+    $('items').innerHTML = m.items.map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description)}</option>`).join('');
+  }catch(e){}
+}
+
+function regNum(n){
+  if(n==null || n==='' || isNaN(Number(n))) return '';
+  return String(Number.parseFloat(Number(n).toFixed(10)));
+}
+function regRowsSorted(rows){
+  return rows.slice().sort((a,b)=>
+    (a.Date===b.Date ? (Number(a.SlNo)||0) - (Number(b.SlNo)||0) : new Date(a.Date) - new Date(b.Date)));
+}
+function regRemarks(r){
+  return [ r.VoucherNo && 'Voucher: '+r.VoucherNo,
+           r.OfficeOrderNo && 'O.O.: '+r.OfficeOrderNo,
+           r.RoadChallanNo && 'Challan: '+r.RoadChallanNo ].filter(Boolean).join('<br>');
+}
+function regSigHTML(){
+  return `<div class="reg-sig"><span>Sign of JE</span><span>Sign of AE</span><span>Sign of EE</span></div>`;
+}
+function regIndexHTML(entries){
+  return `<div class="reg-index"><h3>Index</h3>` +
+    entries.map((e,i)=>`
+      <div class="reg-index-entry">
+        <span class="rie-text">${i+1}. ${escapeHtml(e.label)}</span>
+        <span class="rie-dots"></span>
+        <span class="rie-page"></span>
+      </div>`).join('') + '</div>';
+}
+function regTableHTML(type, rows, opts){
+  const label = (type==='Receipt') ? 'Received' : 'Issued';
+  const cls = (type==='Receipt') ? 'rcv' : 'iss';
+  const rowsHTML = rows.map((r,idx)=>{
+    const cumulative = opts.cumulative ? opts.cumulative(r) : '';
+    return `<tr>
+      <td>${escapeHtml(fmtDate(r.Date))}</td>
+      <td>${opts.particulars(r)}</td>
+      <td class="dim">${escapeHtml(r.HRNo||'')}</td>
+      <td class="num ${cls}">${regNum(r.Qty)}</td>
+      <td class="num">${cumulative}</td>
+      <td class="dim">${regRemarks(r)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="reg-sub ${cls}">${label}</div>
+    <table class="reg-table">
+      <thead><tr>
+        <th>Date</th><th>Particulars</th><th>HR No.</th>
+        <th class="num ${cls}">Qty. ${label}</th><th class="num">Cumulative</th><th>Remarks</th>
+      </tr></thead>
+      <tbody>${rowsHTML || `<tr><td colspan="6" class="dim">No ${label.toLowerCase()} movements.</td></tr>`}</tbody>
+    </table>`;
+}
+function regAgencySheet(rows, balances){
+  const grouped = {};
+  rows.forEach(r=>{
+    const key = String(r.AgencyDetails||'').trim().toLowerCase();
+    if(!key) return;
+    if(!grouped[key]) grouped[key] = { label: r.AgencyDetails.trim(), rcv: [], iss: [] };
+    grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
+  });
+  const keys = Object.keys(grouped).sort((a,b)=>grouped[a].label.localeCompare(grouped[b].label));
+  const particulars = r=>[r.ItemDescription, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const sections = keys.map((k,i)=>{
+    const g = grouped[k];
+    const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
+    const rcvCum = {}, issCum = {};
+    const rcvTbl = regTableHTML('Receipt', rcvRows, {
+      particulars,
+      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); rcvCum[m]=(rcvCum[m]||0)+(Number(r.Qty)||0); return regNum(rcvCum[m]); }
+    });
+    const issTbl = regTableHTML('Issue', issRows, {
+      particulars,
+      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); issCum[m]=(issCum[m]||0)+(Number(r.Qty)||0); return regNum(issCum[m]); }
+    });
+    const byMat = {};
+    g.rcv.concat(g.iss).forEach(r=>{
+      const m = String(r.ItemDescription||'').trim().toLowerCase();
+      if(!byMat[m]) byMat[m] = { label: r.ItemDescription, rcv:0, iss:0 };
+      if(r.TransactionType==='Receipt') byMat[m].rcv += Number(r.Qty)||0;
+      else byMat[m].iss += Number(r.Qty)||0;
+    });
+    const sumRows = Object.keys(byMat).sort((a,b)=>byMat[a].label.localeCompare(byMat[b].label)).map(m=>{
+      const it = byMat[m];
+      return `<tr><td>${escapeHtml(it.label)}</td><td class="num rec">${regNum(it.rcv)}</td><td class="num iss">${regNum(it.iss)}</td></tr>`;
+    }).join('');
+    return `<div class="reg-section">
+      <h3>${i+1}. ${escapeHtml(g.label)}</h3>
+      ${rcvTbl}${issTbl}
+      <div class="reg-sub">Summary</div>
+      <table class="reg-table">
+        <thead><tr><th>Material</th><th class="num rcv">Total received</th><th class="num iss">Total issued</th></tr></thead>
+        <tbody>${sumRows || '<tr><td colspan="3" class="dim">No movements.</td></tr>'}</tbody>
+      </table>
+      ${regSigHTML()}
+    </div>`;
+  });
+  return regIndexHTML(keys.map(k=>({ label: grouped[k].label }))) + sections.join('');
+}
+function regMaterialSheet(rows, balances){
+  const grouped = {};
+  rows.forEach(r=>{
+    const key = String(r.ItemCode||'').trim();
+    if(!key) return;
+    if(!grouped[key]) grouped[key] = { label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] };
+    grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
+  });
+  const keys = Object.keys(grouped).sort((a,b)=>(grouped[a].label||a).localeCompare(grouped[b].label||b));
+  const particulars = r=>[r.AgencyDetails, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const sections = keys.map((k,i)=>{
+    const g = grouped[k];
+    const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
+    let cum = 0, cumIss = 0;
+    const rcvTbl = regTableHTML('Receipt', rcvRows, {
+      particulars,
+      cumulative: r=>{ cum += Number(r.Qty)||0; return regNum(cum); }
+    });
+    const issTbl = regTableHTML('Issue', issRows, {
+      particulars,
+      cumulative: r=>{ cumIss += Number(r.Qty)||0; return regNum(cumIss); }
+    });
+    const bal = balances.find(b=>b.itemCode===k) || { opening:0, received:0, issued:0, closing:0 };
+    return `<div class="reg-section">
+      <h3>${i+1}. ${escapeHtml(g.label||k)} <span class="code">${escapeHtml(k)}${g.unit ? ' · '+escapeHtml(g.unit) : ''}</span></h3>
+      ${rcvTbl}${issTbl}
+      <div class="reg-sub">Position</div>
+      <table class="reg-table">
+        <thead><tr><th>Item</th><th class="num">Opening</th><th class="num rcv">Received</th><th class="num iss">Issued</th><th class="num">Closing</th></tr></thead>
+        <tbody><tr>
+          <td>${escapeHtml(g.label||k)}</td>
+          <td class="num">${regNum(bal.opening)}</td>
+          <td class="num rec">${regNum(bal.received)}</td>
+          <td class="num iss">${regNum(bal.issued)}</td>
+          <td class="num">${regNum(bal.closing)}</td>
+        </tr></tbody>
+      </table>
+      ${regSigHTML()}
+    </div>`;
+  });
+  return regIndexHTML(keys.map(k=>({ label: (grouped[k].label||k) }))) + sections.join('');
+}
+function regSheetHTML(bodyHTML, meta){
+  let title = 'Material stock register';
+  try{ title = localStorage.getItem('bdi_reg_title') || title; }catch(e){}
+  return `<div class="reg-sheet">
+    <div class="reg-sheet-head">
+      <div class="reg-kicker">${escapeHtml(officeName())} — Store</div>
+      <div class="reg-title" id="editableTitle" contenteditable="true" spellcheck="false">${escapeHtml(title)}</div>
+      <div class="reg-meta">Period: <b>${meta.from ? fmtDate(meta.from) : 'From start'}</b> to <b>${meta.to ? fmtDate(meta.to) : 'Today'}</b>${meta.item ? ' · Item: <b>'+escapeHtml(meta.item)+'</b>' : ''}</div>
+    </div>
+    ${bodyHTML}
+    <div class="reg-sheet-foot">Prepared from the store register · ${escapeHtml(storeName())}</div>
+  </div>`;
+}
+
+document.querySelectorAll('.reg-scope-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    currentView = btn.dataset.regView;
+    document.querySelectorAll('.reg-scope-btn').forEach(b=>{
+      const on = b===btn;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+  });
+});
+
+$('btnSaveUrl').addEventListener('click', async ()=>{
+  SCRIPT_URL = $('scriptUrl').value.trim();
+  try{ localStorage.setItem('bdi_store_script_url', SCRIPT_URL); }catch(e){}
+  if(!SCRIPT_URL){ $('status').textContent = 'Enter the Apps Script URL of the store backend.'; return; }
+  $('status').textContent = 'Saving and loading materials…';
+  await loadItems();
+  $('status').textContent = 'Connected. Materials loaded.';
+});
+$('printBtn').addEventListener('click', ()=>{ window.print(); });
+$('generate').addEventListener('click', async ()=>{
+  const btn = $('generate');
+  btn.disabled = true; btn.textContent = 'Building register…';
+  $('status').textContent = '';
+  const from = $('from').value, to = $('to').value, itemCode = $('item').value.trim();
+  try{
+    const params = { from, to, itemCode };
+    const [listData, sregData] = await Promise.all([
+      apiGet('list', params),
+      apiGet('stockRegister', params)
+    ]);
+    const rows = listData.rows || [];
+    const balances = sregData.items || [];
+    const out = $('output');
+    if(!rows.length){
+      out.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements in this range. Widen the dates or clear the item code.</div>';
+      return;
+    }
+    const bodyHTML = (currentView==='agency')
+      ? regAgencySheet(rows, balances)
+      : regMaterialSheet(rows, balances);
+    out.innerHTML = regSheetHTML(bodyHTML, { from, to, item: itemCode });
+    const t = $('editableTitle');
+    if(t){
+      t.addEventListener('blur', ()=>{ try{ localStorage.setItem('bdi_reg_title', t.textContent.trim()); }catch(e){} });
+    }
+  }catch(err){ $('status').textContent = 'Error: ' + err.message; }
+  finally{ btn.disabled = false; btn.textContent = 'Generate register'; }
+});
+
+(function(){
+  $('scriptUrl').value = SCRIPT_URL;
+  if(SCRIPT_URL){ loadItems(); $('status').textContent = 'Connected. Materials loaded.'; }
+  else $('status').textContent = 'Enter the Apps Script URL of the store backend.';
+})();
+</script>
+</body>
+</html>
