@@ -1136,10 +1136,11 @@ async function loadDashboard(){
   if(!SCRIPT_URL) return;
   try{
     const d = await apiGet('dashboard');
-    $('posIssued').textContent = d.yearIssuedHrs;
-    $('posReceived').textContent = d.yearReceivedHrs;
-    $('posInStockVal').textContent = d.positiveStock;
-    $('posShortVal').textContent = d.negativeStock;
+    const num = v => Number(v) > 0 ? Number(v) : 0;
+    $('posIssued').textContent = num(d.yearIssuedHrs);
+    $('posReceived').textContent = num(d.yearReceivedHrs);
+    $('posInStockVal').textContent = num(d.positiveStock);
+    $('posShortVal').textContent = num(d.negativeStock);
     $('posAsOf').textContent = 'as of ' + fmtDate(new Date());
     const pendingCard = $('pendingCard');
     if(d.pendingVoucher > 0){

@@ -35,12 +35,15 @@
  *    and need no manual setup.
  *
  * YEAR-END ARCHIVING:
- *  Every time the script runs, it checks whether the calendar year has
- *  rolled over since last use. If so, the live "Transactions" tab is
- *  renamed to "Transactions_<oldYear>" and a fresh, empty "Transactions"
- *  tab is started for the new year. Reports/Register/Dashboard queries
- *  transparently read across the live tab AND all archived Transactions_*
- *  tabs, so nothing becomes invisible after the rollover.
+ *  Every time the script runs it moves any transaction rows dated before the
+ *  current year out of the live "Transactions" tab and into per-year
+ *  "Transactions_<year>" tabs (created automatically), so the live tab only
+ *  ever holds the current year. This reconciles by row date, so it also
+ *  rescues prior-year rows that were sitting in the live tab when the year
+ *  counter was first set (or mid-year deploys happened) and handles skipped
+ *  years in one pass. Reports/Register/Dashboard queries transparently read
+ *  across the live tab AND all archived Transactions_* tabs, so nothing
+ *  becomes invisible after the rollover.
  *
  * Sheets used in THIS workbook (auto-created on first run if missing):
  *   Transactions        - current year's transactions, one row per item line
@@ -107,26 +110,51 @@ function init_() {
 
 /* ---------------- Year-end archiving ---------------- */
 
+/**
+ * Archives any transaction rows dated before the current year into
+ * Transactions_<year> tabs, keeping the live tab current-year-only.
+ *
+ * This reconciles by ROW YEAR rather than only on a tracked-year change, so
+ * it also rescues prior-year rows that were sitting in the live tab when
+ * CurrentTxnYear was first set (or a deploy happened mid-year): it will
+ * split a mixed live tab into Transactions_2024 / Transactions_2025 / live,
+ * and it handles multi-year gaps in one pass. Rows whose Date won't parse
+ * are left in the live tab untouched. Non-fatal by design (see init_()).
+ */
 function archiveYearIfNeeded_() {
   const map = getConfigMap_();
   const currentYear = new Date().getFullYear();
   const trackedYear = Number(map['CurrentTxnYear']) || 0;
-
-  if (!trackedYear) {
-    setConfigValue_('CurrentTxnYear', String(currentYear));
+  const ss = getSS();
+  const live = ss.getSheetByName(TXN_SHEET);
+  if (!live) {
+    if (!trackedYear) setConfigValue_('CurrentTxnYear', String(currentYear));
     return;
   }
-  if (trackedYear >= currentYear) return;
 
-  const ss = getSS();
-  const liveSheet = ss.getSheetByName(TXN_SHEET);
-  if (liveSheet) {
-    const archiveName = TXN_SHEET + '_' + trackedYear;
-    if (!ss.getSheetByName(archiveName)) {
-      liveSheet.setName(archiveName);
+  const data = live.getDataRange().getValues();
+  const byYear = {};
+  const toArchive = [];
+  for (let i = 1; i < data.length; i++) {
+    const d = new Date(data[i][1]);
+    const y = isNaN(d.getTime()) ? 0 : d.getFullYear();
+    if (y && y < currentYear) {
+      (byYear[y] = byYear[y] || []).push(i);
+      toArchive.push(i);
     }
   }
-  setConfigValue_('CurrentTxnYear', String(currentYear));
+
+  if (toArchive.length) {
+    Object.keys(byYear).map(Number).sort(function (a, b) { return a - b; })
+      .forEach(function (y) {
+        const target = ensureSheet_(TXN_SHEET + '_' + y, TXN_HEADERS);
+        const rows = byYear[y].map(function (i) { return data[i]; });
+        target.getRange(target.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+      });
+    toArchive.sort(function (a, b) { return b - a; });
+    toArchive.forEach(function (i) { live.deleteRow(i + 1); });
+  }
+  if (trackedYear !== currentYear) setConfigValue_('CurrentTxnYear', String(currentYear));
 }
 
 /* ---------------- Config (Script Properties) ---------------- */
@@ -190,7 +218,7 @@ function sheetRowsAsObjects_(sh) {
 
 const CACHE_TTL_SEC = 1800;      // 30 min; Apps Script CacheService max is 6h
 const SREG_VER_TTL_SEC = 21600;  // 6h — the sreg version counter outlives payload TTLs
-const CACHE_KEY_DASH = 'dash_v1';
+const CACHE_KEY_DASH = 'dash_v2';  // bump when the dashboard payload shape changes
 const CACHE_KEY_META = 'meta_v1';
 const SREG_VER_KEY = 'sreg_ver';
 
