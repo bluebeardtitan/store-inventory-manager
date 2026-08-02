@@ -45,6 +45,14 @@
  * Sheets used in THIS workbook (auto-created on first run if missing):
  *   Transactions        - current year's transactions, one row per item line
  *   Transactions_<year> - previous years, created automatically at rollover
+ *
+ * PERFORMANCE / CACHING:
+ *  Master data (items, schemes, work orders) is cached server-side (~30 min)
+ *  so repeated calls don't re-read the external spreadsheets. The frontend
+ *  additionally caches master data in the browser (localStorage) and searches
+ *  work orders LOCALLY from a per-year index it downloads once — the server is
+ *  only touched to warm a cache. Pass refresh=1 on an action to bypass the
+ *  server cache; the frontend does this for its explicit refresh/sync buttons.
  */
 
 const TXN_SHEET = 'Transactions';
@@ -163,6 +171,20 @@ function sheetRowsAsObjects_(sh) {
     });
 }
 
+/* ---------------- Server-side cache (fast reads) ---------------- */
+
+const CACHE_TTL_SEC = 1800; // 30 min; Apps Script CacheService max is 6h
+
+function cacheGet_(key) {
+  try { return CacheService.getScriptCache().get(key); } catch (err) { return null; }
+}
+function cachePut_(key, value) {
+  try { CacheService.getScriptCache().put(key, value, CACHE_TTL_SEC); } catch (err) {}
+}
+function cacheDrop_(key) {
+  try { CacheService.getScriptCache().remove(key); } catch (err) {}
+}
+
 /* ---------------- CORS / entry points ---------------- */
 
 function doGet(e) {
@@ -178,13 +200,16 @@ function doGet(e) {
         result = stockRegister_(e.parameter);
         break;
       case 'meta':
-        result = getMeta_();
+        result = getMeta_(e.parameter.refresh === '1');
+        break;
+      case 'workOrderIndex':
+        result = workOrderIndex_(e.parameter);
         break;
       case 'workOrders':
         result = searchWorkOrders_(e.parameter);
         break;
       case 'dashboard':
-        result = getDashboard_();
+        result = getDashboard_(e.parameter.refresh === '1');
         break;
       default:
         result = { error: 'Unknown action: ' + action };
@@ -299,6 +324,7 @@ function addTransaction_(body) {
   });
 
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, TXN_HEADERS.length).setValues(rows);
+  cacheDrop_('dash_v1');
 
   return { success: true, hrNo: hrNo, voucherNo: body.voucherNo || '', lines: rows.length };
 }
@@ -328,6 +354,7 @@ function updateVoucher_(body) {
     }
   });
   if (!updated) throw new Error('No transaction found with HR No. ' + body.hrNo);
+  cacheDrop_('dash_v1');
   return { success: true, updated: updated };
 }
 
@@ -444,7 +471,20 @@ function stockRegister_(params) {
 
 /* ---------------- Master data (external files, read-only) ---------------- */
 
-function getMeta_() {
+function getMeta_(force) {
+  const cacheKey = 'meta_v1';
+  if (!force) {
+    const hit = cacheGet_(cacheKey);
+    if (hit) {
+      try { return JSON.parse(hit); } catch (err) {}
+    }
+  }
+  const result = buildMeta_();
+  cachePut_(cacheKey, JSON.stringify(result));
+  return result;
+}
+
+function buildMeta_() {
   const cfg = getConfigMap_();
 
   const itemTab = openExternalTab_(cfg['ItemMasterSheetId'], 'ItemMaster');
@@ -481,10 +521,50 @@ function getWorkOrderYears_(cfg) {
 }
 
 /**
+ * Returns ALL work-order rows for a calendar-year tab (no free-text filter).
+ * The frontend downloads this once per year and searches it LOCALLY for
+ * instant search. params: { year: '2026', refresh: '1' }.
+ * Same row shape as searchWorkOrders_(), but unfiltered and cached.
+ */
+function workOrderIndex_(params) {
+  const cfg = getConfigMap_();
+  const year = params.year;
+  if (!year) throw new Error('year (calendar year, e.g. 2026) is required.');
+  const id = cfg['WorkOrderMasterSheetId'];
+  if (!id) return { rows: [], note: 'No Work Order Master file configured yet — see Config tab.' };
+
+  const cacheKey = 'woidx_' + year + '_v1';
+  if (params.refresh !== '1') {
+    const hit = cacheGet_(cacheKey);
+    if (hit) {
+      try { return JSON.parse(hit); } catch (err) {}
+    }
+  }
+
+  const tab = openExternalTab_(id, String(year));
+  if (!tab) return { rows: [], note: 'No tab named "' + year + '" found in the Work Order Master file.' };
+
+  const rows = sheetRowsAsObjects_(tab)
+    .map(function (r) {
+      return {
+        AgencyName: r['AgencyName'],
+        WorkOrderNo: r['WorkOrderNo'],
+        WorkOrderDate: r['WorkOrderDate'],
+        NameOfWork: r['NameOfWork']
+      };
+    })
+    .filter(function (r) { return r.WorkOrderNo; });
+  const result = { rows: rows };
+  cachePut_(cacheKey, JSON.stringify(result));
+  return result;
+}
+
+/**
  * Searches the calendar-year tab of the Work Order Master file for rows
  * matching a free-text query against agency name or work order no.
  * params: { year: '2026', q: 'jogmaya' }
  * Expected columns in each year's tab: AgencyName, WorkOrderNo, WorkOrderDate, NameOfWork
+ * Kept as a fallback for the frontend when the local index can't load.
  */
 function searchWorkOrders_(params) {
   const cfg = getConfigMap_();
@@ -510,7 +590,20 @@ function searchWorkOrders_(params) {
 
 /* ---------------- Dashboard ---------------- */
 
-function getDashboard_() {
+function getDashboard_(force) {
+  const cacheKey = 'dash_v1';
+  if (!force) {
+    const hit = cacheGet_(cacheKey);
+    if (hit) {
+      try { return JSON.parse(hit); } catch (err) {}
+    }
+  }
+  const result = buildDashboard_();
+  cachePut_(cacheKey, JSON.stringify(result));
+  return result;
+}
+
+function buildDashboard_() {
   const rows = getAllTxns_();
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
