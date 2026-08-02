@@ -291,31 +291,51 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 }
 .card h3 + label{margin-top:0;}
 
-/* Stock position — the desk summary, four typewritten figures on a ruled sheet */
+/* Stock position — the desk summary: four typewritten figures on a ruled matrix */
 .pos-sheet{background:var(--paper); border-color:#DDD2B2;}
-.pos-head{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+.pos-head{display:flex; align-items:center; gap:12px; margin-bottom:14px;}
 .pos-head .ledger-stamp{font-size:22px;}
 .pos-head-rule{flex:1; height:2px; background:var(--ink); position:relative;}
 .pos-head-rule::after{content:''; position:absolute; left:0; right:0; top:3px; height:1px; background:var(--rule-strong);}
 .pos-asof{font-size:11px; color:var(--ink-mut); letter-spacing:.04em; white-space:nowrap;}
-.pos-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px;}
+.pos-grid{
+  display:grid; grid-template-columns:repeat(2,1fr);
+  background:var(--rule); gap:1px;
+  border:1.5px solid var(--rule-strong); border-radius:3px; overflow:hidden;
+}
 .pos-cell{
   position:relative; display:flex; flex-direction:column; align-items:flex-start;
-  padding:14px 14px 12px; border-radius:3px; text-align:left;
-  background:rgba(255,253,245,.7); border:1px solid var(--rule);
+  padding:15px 16px 13px; text-align:left; background:var(--paper);
 }
 .pos-cell::before{content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--rule-strong);}
+.pos-cell.flow-issue::before{background:var(--margin);}
+.pos-cell.flow-receipt::before{background:var(--receipt);}
+.pos-cell.pos-link::before{background:var(--ink);}
 .pos-label{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-mut);}
 .pos-sub{font-weight:500; opacity:.75; letter-spacing:.04em; text-transform:none;}
-.pos-value{font-family:var(--stamp); font-size:38px; line-height:1.1; margin:7px 0 3px; color:var(--ink); font-variant-numeric:tabular-nums;}
+.pos-value{font-family:var(--stamp); font-size:38px; line-height:1.1; margin:7px 0 4px; color:var(--ink); font-variant-numeric:tabular-nums;}
 .pos-note{font-size:11px; color:var(--ink-mut); line-height:1.45;}
-.pos-link{cursor:pointer; border:1px solid var(--rule-strong); background:rgba(255,253,245,.9);
-  transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease; width:100%;}
-.pos-link:hover{transform:translateY(-1px); box-shadow:0 10px 18px -12px rgba(8,13,26,.5); border-color:var(--ink);}
+.pos-link{cursor:pointer; border:none; width:100%;}
+.pos-link:hover .pos-value{text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:5px;}
 .pos-link .pos-value{color:var(--receipt);}
 .pos-link.warn .pos-value{color:var(--margin);}
 .pos-link .pos-note{text-decoration:underline; text-decoration-color:var(--rule-strong); text-underline-offset:2px;}
 @media (min-width:640px){ .pos-grid{grid-template-columns:repeat(4,1fr);} }
+
+/* No-voucher pending — an inline stamped strip on the stock sheet */
+.dash-pending{
+  margin-top:14px; padding:10px 14px;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  border:1.5px dashed var(--margin); border-radius:3px;
+  background:#FBF0EA; font-size:13px; line-height:1.5; color:#7A2B1D;
+}
+.pending-stamp{
+  flex-shrink:0; font-family:var(--stamp); font-size:14px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--margin);
+  border:1.5px solid var(--margin); border-radius:3px; padding:4px 9px 3px;
+  transform:rotate(-2deg);
+}
+.pending-txt b{color:var(--ink); font-weight:700;}
 
 /* Stock ledger — a ruled register sheet */
 .ledger{background:var(--paper); border-color:#DDD2B2;}
@@ -351,9 +371,9 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
 .ldg-row{display:grid; grid-template-columns:24px minmax(0,1.25fr) repeat(3,minmax(0,1fr)); column-gap:10px; align-items:center; border-bottom:1px solid rgba(30,41,64,.07);}
 .ldg-check{display:flex; align-items:center; padding:9px 0;}
-.ldg-id{display:flex; align-items:baseline; gap:7px; background:none; border:none; padding:9px 0; text-align:left; cursor:pointer; min-width:0; font-family:var(--body);}
-.ldg-code{font-family:var(--stamp); font-size:12.5px; color:var(--ink); flex-shrink:0;}
-.ldg-desc{font-size:12.5px; color:var(--ink-mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1;}
+.ldg-id{display:flex; align-items:flex-start; gap:8px; background:none; border:none; padding:9px 0; text-align:left; cursor:pointer; min-width:0; font-family:var(--body);}
+.ldg-code{font-family:var(--stamp); font-size:12.5px; color:var(--ink); flex-shrink:0; line-height:1.35;}
+.ldg-desc{font-size:12.5px; color:var(--ink-mut); white-space:normal; overflow:visible; min-width:0; flex:1; line-height:1.35;}
 .ldg-unit{font-size:10.5px; color:var(--ink-mut); opacity:.75; margin-left:5px; flex-shrink:0;}
 .ldg-id .chev{color:var(--rule-strong); font-size:11px; flex-shrink:0; margin-left:auto; transition:transform .15s ease;}
 .ldg-row.open .chev{color:var(--margin);}
@@ -376,9 +396,11 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .ldg-num.stk{color:var(--ink);}
 
 .ldg-detail{grid-column:1/-1; padding:2px 0 14px;}
-.ldg-detail-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin:10px 0;}
+.ldg-detail-head{display:flex; justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap; margin:10px 0;}
+.ldg-idcol{display:flex; flex-direction:column; gap:2px; min-width:0;}
 .ldg-detail-head .ldg-code{font-family:var(--stamp); font-size:13px; color:var(--margin);}
-.ldg-sum{font-size:12px; color:var(--ink-mut);}
+.ldg-detail-head .ldg-name{font-size:13px; color:var(--ink); font-weight:600; line-height:1.4; overflow-wrap:anywhere;}
+.ldg-sum{font-size:12px; color:var(--ink-mut); white-space:nowrap;}
 .ldg-cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px;}
 .mvm-card{background:#FFFDF5; border:1px solid var(--rule); border-left:3px solid var(--rule-strong); border-radius:3px; padding:10px 12px; display:flex; flex-direction:column; gap:6px;}
 .mvm-card.receipt{border-left-color:var(--receipt);}
@@ -437,18 +459,65 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
 .filter-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 
-/* Report / register generator — scope stamps */
-.rep-scope,.reg-scope{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0 6px;}
-.reg-scope{grid-template-columns:repeat(2,1fr);}
-.rep-scope-btn,.reg-scope-btn{
+/* Register generator — scope stamps */
+.reg-scope{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:14px 0 6px;}
+.reg-scope-btn{
   padding:11px 6px 9px; border:1.5px solid var(--rule-strong); border-radius:3px;
   background:transparent; color:var(--ink-mut); font-family:var(--stamp); font-size:13px;
   text-transform:uppercase; letter-spacing:.08em; cursor:pointer; transition:background .15s, color .15s, border-color .15s, transform .12s;
 }
-.rep-scope-btn:hover,.reg-scope-btn:hover{border-color:var(--ink); color:var(--ink);}
-.rep-scope-btn:active,.reg-scope-btn:active{transform:translateY(1px);}
-.rep-scope-btn.active,.reg-scope-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
-.rep-field{margin-top:2px;}
+.reg-scope-btn:hover{border-color:var(--ink); color:var(--ink);}
+.reg-scope-btn:active{transform:translateY(1px);}
+.reg-scope-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
+
+/* Movement reports — the register's index leaves, pulled out on the dashboard */
+.rd-sub{margin:0 0 14px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
+.rd-tabs{
+  display:flex; gap:5px; align-items:flex-end; padding:0 3px; margin-bottom:14px;
+  border-bottom:2px solid var(--ink);
+}
+.rd-tab{
+  appearance:none; border:none; cursor:pointer;
+  font-family:var(--disp); font-weight:600; font-size:12.5px; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-mut); background:var(--tab);
+  padding:9px 17px 10px; margin-bottom:-2px;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px));
+  transition:color .15s, background .15s;
+}
+.rd-tab:hover{color:var(--ink);}
+.rd-tab.active{background:var(--paper); color:var(--ink);}
+.rd-dates{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.rd-scope{margin-top:12px;}
+.rd-opt{margin:12px 0 0;}
+#btnRdRun{margin-top:14px;}
+
+.rd-results{padding:0; overflow:hidden;}
+.rl-toolbar{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:11px 16px; border-bottom:1px solid var(--rule); background:var(--sheet);
+}
+.rl-leaf{
+  position:relative; background-color:var(--paper);
+  background-image:repeating-linear-gradient(to bottom, transparent 0 26px, rgba(30,41,64,.05) 26px 27px);
+  padding:18px 18px 20px 34px; animation:sheetIn .3s ease-out both;
+}
+.rl-leaf::before{content:''; position:absolute; left:16px; top:0; bottom:0; width:2px; background:var(--margin);}
+.rl-caption{
+  display:flex; flex-wrap:wrap; gap:3px 16px; align-items:baseline;
+  padding-bottom:10px; border-bottom:1.5px solid var(--rule-strong); margin-bottom:2px;
+}
+.rl-scope{font-family:var(--stamp); font-size:13px; color:var(--ink); text-transform:uppercase; letter-spacing:.03em;}
+.rl-period{font-family:var(--stamp); font-size:11px; color:var(--ink-mut); letter-spacing:.04em;}
+.rl-rows{padding-top:2px;}
+.rl-rows .txn-row{padding:11px 0; align-items:flex-start;}
+.rl-total{
+  position:relative; margin-top:8px; padding-top:12px;
+  border-top:2px solid var(--ink);
+  display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  font-family:var(--stamp); font-size:12.5px; letter-spacing:.04em; color:var(--ink);
+}
+.rl-total::before{content:''; position:absolute; left:0; right:0; top:4px; height:1px; background:var(--rule-strong);}
+.rl-leaf .empty-state{padding:30px 12px 20px;}
 
 .empty-state{text-align:center; padding:36px 12px; color:var(--ink-mut); font-size:13.5px;}
 .empty-state .sig{font-family:var(--stamp); font-size:28px; color:var(--rule-strong); margin-bottom:8px;}
@@ -567,6 +636,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 @media (prefers-reduced-motion: reduce){
   .sheet, .sheet::before, .confirm-banner{animation:none!important;}
   .stamp{transition:none!important;}
+  .rl-leaf{animation:none!important;}
 }
 </style>
 </head>
@@ -583,18 +653,18 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 <!-- DASHBOARD -->
 <div class="view active" id="view-dashboard">
   <div class="card pos-sheet">
-    <div class="pos-head">
+    <header class="pos-head">
       <span class="ledger-stamp">Stock position</span>
       <span class="pos-head-rule"></span>
       <span class="pos-asof mono" id="posAsOf">as of today</span>
-    </div>
+    </header>
     <div class="pos-grid">
-      <div class="pos-cell">
+      <div class="pos-cell flow-issue">
         <span class="pos-label">Issued <span class="pos-sub">this year</span></span>
         <span class="pos-value mono" id="posIssued">–</span>
         <span class="pos-note">HRs issued to agencies</span>
       </div>
-      <div class="pos-cell">
+      <div class="pos-cell flow-receipt">
         <span class="pos-label">Received <span class="pos-sub">this year</span></span>
         <span class="pos-value mono" id="posReceived">–</span>
         <span class="pos-note">HRs received into store</span>
@@ -610,14 +680,55 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
         <span class="pos-note">negative balance &middot; open ledger</span>
       </button>
     </div>
+    <div class="dash-pending hidden" id="pendingStrip">
+      <span class="pending-stamp" aria-hidden="true">No voucher</span>
+      <span class="pending-txt" id="pendingText"></span>
+    </div>
   </div>
-  <div class="card hidden" id="pendingCard">
-    <h3>Awaiting voucher no.</h3>
-    <div class="hint" id="pendingText"></div>
-  </div>
+
   <div class="card">
-    <h3>Recent activity</h3>
-    <div id="recentList"><div class="empty-state">Connect your sheet in Settings to see data.</div></div>
+    <h3>Movement reports</h3>
+    <p class="rd-sub">Pull a transaction history by agency, work order, or scheme — the register's index leaves.</p>
+    <div class="rd-tabs" role="tablist" aria-label="Movement report scope">
+      <button type="button" class="rd-tab active" data-rd-scope="agency" role="tab" aria-selected="true">Agency</button>
+      <button type="button" class="rd-tab" data-rd-scope="workOrder" role="tab" aria-selected="false">Work order</button>
+      <button type="button" class="rd-tab" data-rd-scope="scheme" role="tab" aria-selected="false">Scheme</button>
+    </div>
+    <div class="rd-scope" data-rd-scope="agency">
+      <label for="rdAgency">Agency name <span class="opt">(part is fine)</span></label>
+      <input type="text" id="rdAgency" name="rdAgency" placeholder="e.g. Jogmaya Engineering">
+    </div>
+    <div class="rd-scope hidden" data-rd-scope="workOrder">
+      <label for="rdWorkOrder">Work order no. <span class="opt">(part is fine)</span></label>
+      <input type="text" id="rdWorkOrder" name="rdWorkOrder" placeholder="e.g. 1247/BD-I">
+    </div>
+    <div class="rd-scope hidden" data-rd-scope="scheme">
+      <label for="rdScheme">Scheme code</label>
+      <input type="text" id="rdScheme" name="rdScheme" list="schemeList" placeholder="Leave blank for all schemes">
+    </div>
+    <div class="rd-dates">
+      <div><label for="rdFrom">From</label><input type="date" id="rdFrom" name="rdFrom"></div>
+      <div><label for="rdTo">To</label><input type="date" id="rdTo" name="rdTo"></div>
+    </div>
+    <label class="check-label rd-opt" for="rdNoVoucher">
+      <input type="checkbox" id="rdNoVoucher" name="rdNoVoucher"> Only show lines missing a voucher no.
+    </label>
+    <button type="button" class="primary" id="btnRdRun">Run report</button>
+    <button type="button" class="secondary hidden" id="btnRdExport">Export CSV</button>
+  </div>
+  <div class="card hidden rd-results" id="rdResults">
+    <div class="rl-toolbar">
+      <span class="muted mono" id="rdCount"></span>
+      <button type="button" class="ghost" id="btnRdClose">Close</button>
+    </div>
+    <div class="rl-leaf">
+      <div class="rl-caption">
+        <span class="rl-scope" id="rdCaptionScope"></span>
+        <span class="rl-period" id="rdCaptionPeriod"></span>
+      </div>
+      <div id="rdBody"></div>
+      <div class="rl-total" id="rdTotal"></div>
+    </div>
   </div>
 </div>
 
@@ -715,7 +826,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
     <footer class="sheet-foot">
       <button type="button" class="primary" id="btnSubmit">Record entry</button>
-      <div class="hint">HR/Back HR no. is generated automatically. The voucher no. comes from the separate online system — add or update it any time from Reports.</div>
+      <div class="hint">HR/Back HR no. is generated automatically. The voucher no. comes from the separate online system — add or update it any time from Movement reports on the dashboard.</div>
     </footer>
   </div>
 </div>
@@ -783,43 +894,6 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   </div>
 </div>
 
-<!-- REPORTS -->
-<div class="view" id="view-reports">
-  <div class="card">
-    <h3>Report generator</h3>
-    <div class="rep-scope" role="tablist" aria-label="Report scope">
-      <button type="button" class="rep-scope-btn active" data-scope="agency" role="tab" aria-selected="true">Agency</button>
-      <button type="button" class="rep-scope-btn" data-scope="workOrder" role="tab" aria-selected="false">Work order</button>
-      <button type="button" class="rep-scope-btn" data-scope="scheme" role="tab" aria-selected="false">Scheme</button>
-    </div>
-    <div class="rep-field" data-scope="agency">
-      <label for="repAgency">Agency name <span class="opt">(part is fine)</span></label>
-      <input type="text" id="repAgency" name="repAgency" placeholder="e.g. Jogmaya Engineering">
-    </div>
-    <div class="rep-field hidden" data-scope="workOrder">
-      <label for="repWorkOrder">Work order no. <span class="opt">(part is fine)</span></label>
-      <input type="text" id="repWorkOrder" name="repWorkOrder" placeholder="e.g. 1247/BD-I">
-    </div>
-    <div class="rep-field hidden" data-scope="scheme">
-      <label for="repScheme">Scheme code</label>
-      <input type="text" id="repScheme" name="repScheme" list="schemeList" placeholder="Leave blank for all schemes">
-    </div>
-    <div class="filter-grid">
-      <div><label for="repFrom">From</label><input type="date" id="repFrom" name="repFrom"></div>
-      <div><label for="repTo">To</label><input type="date" id="repTo" name="repTo"></div>
-    </div>
-    <label class="check-label" for="repNoVoucher">
-      <input type="checkbox" id="repNoVoucher" name="repNoVoucher"> Only show lines missing a voucher no.
-    </label>
-    <button type="button" class="primary" id="btnRunReport">Run report</button>
-    <button type="button" class="secondary hidden" id="btnExportCsv">Export CSV</button>
-  </div>
-  <div class="card hidden" id="reportResults">
-    <h3>Results <span class="muted mono" id="reportCount" style="font-weight:400; text-transform:none;"></span></h3>
-    <div id="reportBody"></div>
-  </div>
-</div>
-
 <!-- SETTINGS -->
 <div class="view" id="view-settings">
   <div class="card">
@@ -868,10 +942,6 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   <button class="nav-btn" data-view="ledger">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" stroke-linejoin="round"/><path d="M8 8h8M8 12h8M8 16h5" stroke-linecap="round"/><path d="M16.5 18.5l2 2 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <span>Ledger</span>
-  </button>
-  <button class="nav-btn" data-view="reports">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V9M12 19V5M19 19v-6" stroke-linecap="round"/></svg>
-    <span>Reports</span>
   </button>
   <button class="nav-btn" data-view="settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
@@ -1142,19 +1212,13 @@ async function loadDashboard(){
     $('posInStockVal').textContent = num(d.positiveStock);
     $('posShortVal').textContent = num(d.negativeStock);
     $('posAsOf').textContent = 'as of ' + fmtDate(new Date());
-    const pendingCard = $('pendingCard');
+    const pendingStrip = $('pendingStrip');
     if(d.pendingVoucher > 0){
-      pendingCard.classList.remove('hidden');
+      pendingStrip.classList.remove('hidden');
       $('pendingText').innerHTML =
-        `${d.pendingVoucher} line(s) don't have a voucher no. yet. Go to <b>Reports</b>, run a report, and tap "+ Add voucher no." on any row.`;
+        `${d.pendingVoucher} line(s) don't have a voucher no. yet. Pull a <b>Movement report</b> below, then tap "+ Add voucher no." on any row.`;
     } else {
-      pendingCard.classList.add('hidden');
-    }
-    const list = $('recentList');
-    if(!d.recent.length){
-      list.innerHTML = '<div class="empty-state">No transactions yet.</div>';
-    } else {
-      list.innerHTML = d.recent.map(r=>txnRowHTML(r, { showItem:true })).join('');
+      pendingStrip.classList.add('hidden');
     }
   }catch(err){ /* silent on dashboard */ }
 }
@@ -1230,7 +1294,10 @@ function ledgerDetailHTML(it){
     </div>`).join('') || '<div class="empty-state">No movements in this range.</div>';
   return `<div class="ldg-detail">
     <div class="ldg-detail-head">
-      <span class="ldg-code">${escapeHtml(it.itemCode)}</span>
+      <span class="ldg-idcol">
+        <span class="ldg-code">${escapeHtml(it.itemCode)}</span>
+        <span class="ldg-name">${escapeHtml(it.description || '')}</span>
+      </span>
       <span class="ldg-sum">Opening ${fmtQty(it.opening)} · Received ${fmtQty(it.received)} · Issued ${fmtQty(it.issued)} · Closing ${fmtQty(it.closing)} ${escapeHtml(it.unit)}</span>
     </div>
     <div class="ldg-cards">${cards}</div>
@@ -1955,44 +2022,52 @@ $('btnGenerateRegister').addEventListener('click', async ()=>{
   finally{ btn.disabled = false; btn.textContent = 'Generate register'; }
 });
 
-/* ---------------- Reports (stamp-based report generator) ---------------- */
-let lastReportRows = [];
-let repScope = 'agency';
+/* ---------------- Movement reports (dashboard — the register's index leaves) ---------------- */
+let lastRdRows = [];
+let rdScope = 'agency';
 
-document.querySelectorAll('.rep-scope-btn').forEach(btn=>{
+document.querySelectorAll('.rd-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    repScope = btn.dataset.scope;
-    document.querySelectorAll('.rep-scope-btn').forEach(b=>{
+    rdScope = btn.dataset.rdScope;
+    document.querySelectorAll('.rd-tab').forEach(b=>{
       const on = b===btn;
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', String(on));
     });
-    document.querySelectorAll('.rep-field').forEach(f=>f.classList.toggle('hidden', f.dataset.scope!==repScope));
+    document.querySelectorAll('.rd-scope').forEach(f=>f.classList.toggle('hidden', f.dataset.rdScope!==rdScope));
   });
 });
 
-$('btnRunReport').addEventListener('click', async ()=>{
+$('btnRdRun').addEventListener('click', async ()=>{
   const params = {
-    from: $('repFrom').value,
-    to: $('repTo').value,
-    noVoucherOnly: $('repNoVoucher').checked ? 'true' : ''
+    from: $('rdFrom').value,
+    to: $('rdTo').value,
+    noVoucherOnly: $('rdNoVoucher').checked ? 'true' : ''
   };
-  if(repScope==='agency') params.agency = $('repAgency').value.trim();
-  if(repScope==='workOrder') params.workOrder = $('repWorkOrder').value.trim();
-  if(repScope==='scheme') params.schemeCode = $('repScheme').value.trim();
+  if(rdScope==='agency') params.agency = $('rdAgency').value.trim();
+  if(rdScope==='workOrder') params.workOrder = $('rdWorkOrder').value.trim();
+  if(rdScope==='scheme') params.schemeCode = $('rdScheme').value.trim();
   try{
     const data = await apiGet('list', params);
-    lastReportRows = data.rows;
-    const wrap = $('reportResults');
+    lastRdRows = data.rows || [];
+    const wrap = $('rdResults');
     wrap.classList.remove('hidden');
-    $('reportCount').textContent = data.count + ' line(s)';
-    $('btnExportCsv').classList.toggle('hidden', !data.count);
-    const body = $('reportBody');
-    if(!data.count){
-      body.innerHTML = '<div class="empty-state">No matching transactions.</div>';
+    $('btnRdExport').classList.toggle('hidden', !lastRdRows.length);
+    const cap = { agency:'Agency', workOrder:'Work order', scheme:'Scheme' }[rdScope];
+    const scopeTxt = { agency:$('rdAgency').value.trim(), workOrder:$('rdWorkOrder').value.trim(), scheme:$('rdScheme').value.trim() }[rdScope] || 'All';
+    $('rdCaptionScope').textContent = cap + ' — ' + scopeTxt;
+    const from = $('rdFrom').value, to = $('rdTo').value;
+    $('rdCaptionPeriod').textContent = 'Period ' + (from || '—') + ' to ' + (to || '—') + ($('rdNoVoucher').checked ? ' · no voucher only' : '');
+    $('rdCount').textContent = lastRdRows.length + ' line(s)';
+    const body = $('rdBody');
+    if(!lastRdRows.length){
+      body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements match this scope in this period.</div>';
+      $('rdTotal').textContent = '';
       return;
     }
-    body.innerHTML = data.rows.map(r=>txnRowHTML(r, { showItem:true, showVoucher:true, showBadge:true })).join('');
+    body.innerHTML = `<div class="rl-rows">${lastRdRows.map(r=>txnRowHTML(r, { showItem:true, showVoucher:true, showBadge:true })).join('')}</div>`;
+    const hrNos = new Set(lastRdRows.map(r=>r.HRNo).filter(Boolean));
+    $('rdTotal').innerHTML = `<span>Total ${lastRdRows.length} line(s) &middot; ${hrNos.size} HR no.${hrNos.size===1?'':'s'}</span><span>Carried forward</span>`;
     document.querySelectorAll('.add-voucher-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const hrNo = btn.dataset.hr;
@@ -2001,18 +2076,20 @@ $('btnRunReport').addEventListener('click', async ()=>{
         try{
           const res = await apiPost('updateVoucher', { hrNo, voucherNo: voucherNo.trim() });
           toast('Updated ' + res.updated + ' line(s)');
-          $('btnRunReport').click();
+          $('btnRdRun').click();
         }catch(err){ toast('Error: ' + err.message); }
       });
     });
   }catch(err){ toast('Error: ' + err.message); }
 });
 
-$('btnExportCsv').addEventListener('click', ()=>{
-  if(!lastReportRows.length) return;
-  const headers = Object.keys(lastReportRows[0]);
+$('btnRdClose').addEventListener('click', ()=>$('rdResults').classList.add('hidden'));
+
+$('btnRdExport').addEventListener('click', ()=>{
+  if(!lastRdRows.length) return;
+  const headers = Object.keys(lastRdRows[0]);
   const csv = [headers.join(',')].concat(
-    lastReportRows.map(r=>headers.map(h=>`"${String(r[h]??'').replace(/"/g,'""')}"`).join(','))
+    lastRdRows.map(r=>headers.map(h=>`"${String(r[h]??'').replace(/"/g,'""')}"`).join(','))
   ).join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
