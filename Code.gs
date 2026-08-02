@@ -92,9 +92,17 @@ function ensureSheet_(name, headers) {
   return sh;
 }
 
+/**
+ * Non-fatal init: archives the year if needed and ensures the live
+ * Transactions tab exists. Never throws — a transient Script Properties or
+ * spreadsheet hiccup must degrade to a JSON error (or a cache miss), never
+ * to an HTML 500 that the frontend misreads as "backend unreachable".
+ * Cache-first read actions skip this entirely and only call it when they
+ * actually need to build from the sheets.
+ */
 function init_() {
-  archiveYearIfNeeded_();
-  ensureSheet_(TXN_SHEET, TXN_HEADERS);
+  try { archiveYearIfNeeded_(); } catch (err) {}
+  try { ensureSheet_(TXN_SHEET, TXN_HEADERS); } catch (err) {}
 }
 
 /* ---------------- Year-end archiving ---------------- */
@@ -197,12 +205,12 @@ function bumpSregVersion_() {
 /* ---------------- CORS / entry points ---------------- */
 
 function doGet(e) {
-  init_();
   try {
     const action = e.parameter.action || 'list';
     let result;
     switch (action) {
       case 'list':
+        init_();
         result = listTransactions_(e.parameter);
         break;
       case 'stockRegister':
@@ -215,6 +223,7 @@ function doGet(e) {
         result = workOrderIndex_(e.parameter);
         break;
       case 'workOrders':
+        init_();
         result = searchWorkOrders_(e.parameter);
         break;
       case 'dashboard':
@@ -230,8 +239,8 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  init_();
   try {
+    init_();
     const body = JSON.parse(e.postData.contents);
     const action = body.action;
     let result;
@@ -267,11 +276,17 @@ function pad_(n, width) {
 /* ---------------- Counters (Script Properties) ---------------- */
 
 function nextSeq_(key) {
-  const props = PropertiesService.getScriptProperties();
-  const propKey = COUNTER_PREFIX + key;
-  const next = (Number(props.getProperty(propKey)) || 0) + 1;
-  props.setProperty(propKey, String(next));
-  return next;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000); // serialize counter bumps across concurrent requests
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const propKey = COUNTER_PREFIX + key;
+    const next = (Number(props.getProperty(propKey)) || 0) + 1;
+    props.setProperty(propKey, String(next));
+    return next;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
@@ -446,6 +461,7 @@ function stockRegister_(params) {
       try { return JSON.parse(hit); } catch (err) {}
     }
   }
+  init_();
   const result = buildStockRegister_(params);
   cachePut_(cacheKey, JSON.stringify(result));
   return result;
@@ -507,6 +523,7 @@ function getMeta_(force) {
       try { return JSON.parse(hit); } catch (err) {}
     }
   }
+  init_();
   const result = buildMeta_();
   cachePut_(cacheKey, JSON.stringify(result));
   return result;
@@ -572,6 +589,7 @@ function workOrderIndex_(params) {
   const tab = openExternalTab_(id, String(year));
   if (!tab) return { rows: [], note: 'No tab named "' + year + '" found in the Work Order Master file.' };
 
+  init_();
   const rows = sheetRowsAsObjects_(tab)
     .map(function (r) {
       return {
@@ -626,6 +644,7 @@ function getDashboard_(force) {
       try { return JSON.parse(hit); } catch (err) {}
     }
   }
+  init_();
   const result = buildDashboard_();
   cachePut_(cacheKey, JSON.stringify(result));
   return result;

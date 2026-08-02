@@ -782,34 +782,66 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 });
 
 /* ---------------- API helper ---------------- */
+const API_TIMEOUT = 20000;   // abort a hung request after 20s (cold start / flaky link)
+const API_MAX_IN_FLIGHT = 3; // don't stack parallel Apps Script calls (throttling/quota)
+
+let apiInFlight = 0;
+const apiWaiters = [];
+function apiTakeSlot(){
+  return new Promise(resolve=>{
+    const take = ()=>{
+      if(apiInFlight < API_MAX_IN_FLIGHT){ apiInFlight++; resolve(); }
+      else apiWaiters.push(take);
+    };
+    take();
+  });
+}
+function apiReleaseSlot(){
+  apiInFlight--;
+  if(apiWaiters.length) apiWaiters.shift()();
+}
+
+async function apiFetch(url, opts){
+  await apiTakeSlot();
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), API_TIMEOUT);
+  try{
+    const res = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
+    let data;
+    try{ data = await res.json(); }
+    catch(e){
+      throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the Script URL in Settings and that the web app is deployed.');
+    }
+    if(data && data.error) throw new Error(data.error);
+    return data;
+  } finally {
+    clearTimeout(timer);
+    apiReleaseSlot();
+  }
+}
 async function apiGet(action, params={}){
   if(!SCRIPT_URL){ toast('Set your Apps Script URL in Settings first'); throw new Error('no url'); }
   const url = new URL(SCRIPT_URL);
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k,v])=>{ if(v) url.searchParams.set(k,v); });
-  const res = await fetch(url.toString());
-  let data;
-  try{ data = await res.json(); }
-  catch(e){
-    throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the Script URL in Settings and that the web app is deployed.');
+  try{
+    return await apiFetch(url.toString());
+  }catch(err){
+    // GET is idempotent: retry once after a timeout/network blip
+    if(err && (err.name === 'AbortError' || /network|failed to fetch|load failed/i.test(err.message || ''))){
+      await new Promise(r=>setTimeout(r, 800));
+      return await apiFetch(url.toString());
+    }
+    throw err;
   }
-  if(data.error) throw new Error(data.error);
-  return data;
 }
 async function apiPost(action, body={}){
   if(!SCRIPT_URL){ toast('Set your Apps Script URL in Settings first'); throw new Error('no url'); }
-  const res = await fetch(SCRIPT_URL, {
+  return apiFetch(SCRIPT_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'}, // avoids CORS preflight against Apps Script
     body: JSON.stringify({ action, ...body })
   });
-  let data;
-  try{ data = await res.json(); }
-  catch(e){
-    throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the Script URL in Settings and that the web app is deployed.');
-  }
-  if(data.error) throw new Error(data.error);
-  return data;
 }
 
 /* ---------------- Settings ---------------- */
