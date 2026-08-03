@@ -245,8 +245,9 @@ async function apiGet(action, params={}){
 async function loadItems(){
   if(!SCRIPT_URL) return;
   try{
-    const m = await apiGet('meta');
-    $('items').innerHTML = m.items.map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description)}</option>`).join('');
+    const m = await apiGet('stockRegister');
+    const items = (m.items || []).map(i=>({ itemCode: i.itemCode, description: i.description }));
+    $('items').innerHTML = items.map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description)}</option>`).join('');
   }catch(e){}
 }
 

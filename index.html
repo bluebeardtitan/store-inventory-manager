@@ -964,6 +964,7 @@ let SCRIPT_URL = localStorage.getItem(CFG_KEY) || '';
 let STORE_NAME = localStorage.getItem(STORE_NAME_KEY) || 'Store Register';
 let OFFICE_NAME = localStorage.getItem(OFFICE_NAME_KEY) || 'Berhampore Division-I \u00B7 PHE';
 let META = { items: [], schemes: [] };
+let FOPTS = { agencies: [], workOrders: [], schemes: [] };
 let currentType = 'Issue';
 let lineCounter = 0;
 const $ = id => document.getElementById(id);
@@ -978,6 +979,8 @@ const CACHE_WO_TTL = 6*3600e3;    // work order master — 6h, revalidated on se
 const CACHE_RD_TTL = 30*24*3600e3; // learned movement-report dropdown options — 30d
 const CACHE_TXN_ITEMS_KEY = 'bdi_cache_txn_items';
 const CACHE_TXN_ITEMS_TTL = 30*60e3; // items that actually have transactions — 30m, mirrors server sreg cache
+const CACHE_FOPTS_KEY = 'bdi_cache_fopts';
+const CACHE_FOPTS_TTL = 30*60e3; // agencies / schemes / work orders present in the transactions — 30m
 
 function cacheRead(key, ttl){
   try{
@@ -1150,14 +1153,10 @@ $('btnRefreshMeta').addEventListener('click', async ()=>{
   }
 });
 
-function renderMetaLists(){
-  $('schemeList').innerHTML = META.schemes.map(s=>`<option value="${escapeHtml(s.schemeCode)}">${escapeHtml(s.schemeName)}</option>`).join('');
-}
 function loadMetaFromCache(){
   const c = cacheRead(CACHE_META_KEY, CACHE_META_TTL);
   if(c && c.data && Array.isArray(c.data.schemes)){
     META = c.data;
-    renderMetaLists();
   }
   return c;
 }
@@ -1165,7 +1164,6 @@ async function loadMeta(force){
   const data = await apiGet('meta', force ? { refresh:'1' } : {});
   META = data;
   cacheWrite(CACHE_META_KEY, data);
-  renderMetaLists();
   populateYearSelect();
 }
 
@@ -1187,6 +1185,25 @@ async function loadTransactedItems(force){
       cacheWrite(CACHE_TXN_ITEMS_KEY, data.items);
     }
   }catch(e){ /* keep whatever is already painted (cache, or nothing yet) */ }
+}
+
+/* Filter-option dropdowns (agencies / schemes / work orders) must offer only
+ * values that really exist in the transactions, not the full master lists. */
+async function loadFilterOptions(force){
+  const c = force ? null : cacheRead(CACHE_FOPTS_KEY, CACHE_FOPTS_TTL);
+  if(c){
+    FOPTS = (c.data && Array.isArray(c.data.agencies)) ? c.data : FOPTS;
+    refreshRdDatalists();
+    if(!c.stale) return;
+  }
+  try{
+    const data = await apiGet('filterOptions', force ? { refresh:'1' } : {});
+    if(data && Array.isArray(data.agencies)){
+      FOPTS = data;
+      cacheWrite(CACHE_FOPTS_KEY, data);
+      refreshRdDatalists();
+    }
+  }catch(e){ /* keep whatever we already have */ }
 }
 
 function escapeHtml(s){
@@ -1462,7 +1479,7 @@ async function prefetchWoIndex(){
   }catch(e){ /* keep whatever we have */ }
 }
 
-/* ---------------- Movement report dropdowns (seeded from WO index, self-learning from results) ---------------- */
+/* ---------------- Movement report dropdowns (transaction-derived, self-learning from results) ---------------- */
 function loadRdLearned(key){
   const c = cacheRead(key, CACHE_RD_TTL);
   return (c && Array.isArray(c.data)) ? c.data : [];
@@ -1484,11 +1501,17 @@ function paintDatalist(id, values){
     .sort((a,b)=>a.localeCompare(b))
     .map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
 }
+function paintSchemeList(){
+  const el = $('schemeList');
+  if(!el) return;
+  el.innerHTML = FOPTS.schemes.slice()
+    .sort((a,b)=>String(a.schemeCode).localeCompare(String(b.schemeCode)))
+    .map(s=>`<option value="${escapeHtml(s.schemeCode)}">${escapeHtml(s.schemeName||'')}</option>`).join('');
+}
 function refreshRdDatalists(){
-  const woAgencies = (woIndex && woIndex.rows) ? woIndex.rows.map(r=>r.AgencyName) : [];
-  const woNos = (woIndex && woIndex.rows) ? woIndex.rows.map(r=>r.WorkOrderNo) : [];
-  paintDatalist('agencyList', woAgencies.concat(loadRdLearned(CACHE_RD_AGENCY_KEY)));
-  paintDatalist('workOrderList', woNos.concat(loadRdLearned(CACHE_RD_WO_KEY)));
+  paintDatalist('agencyList', FOPTS.agencies.concat(loadRdLearned(CACHE_RD_AGENCY_KEY)));
+  paintDatalist('workOrderList', FOPTS.workOrders.concat(loadRdLearned(CACHE_RD_WO_KEY)));
+  paintSchemeList();
 }
 
 function filterWoRows(rows, q){
@@ -1843,6 +1866,7 @@ $('btnSubmit').addEventListener('click', async ()=>{
     addItemLine();
     loadMeta();
     loadTransactedItems(true);
+    loadFilterOptions(true);
   }catch(err){
     toast('Error: ' + err.message);
   }finally{
@@ -2149,6 +2173,7 @@ populateYearSelect();
 updateMetaCacheStatus();
 refreshRdDatalists();
 loadTransactedItems();
+loadFilterOptions();
 if(SCRIPT_URL){
   loadMeta().then(()=>{
     $('syncDot').classList.remove('off');

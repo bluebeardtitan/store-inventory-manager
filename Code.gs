@@ -278,6 +278,9 @@ function doGet(e) {
       case 'stockRegister':
         result = stockRegister_(e.parameter);
         break;
+      case 'filterOptions':
+        result = filterOptions_(e.parameter);
+        break;
       case 'meta':
         result = getMeta_(e.parameter.refresh === '1');
         break;
@@ -577,6 +580,45 @@ function buildStockRegister_(params) {
   });
 
   return { items: Object.values(byItem) };
+}
+
+/* ---------------- Filter options (transaction-derived dropdown values) ---------------- */
+
+/**
+ * Distinct values actually present in the transaction sheets, for the
+ * movement-report / register dropdowns. Only values that have really been
+ * transacted are offered — the master files (work orders, schemes) contain
+ * far more than what the store has touched.
+ * params: { refresh: '1' }.
+ * Cached namespaced by sreg_ver so any write invalidates it (same rule as
+ * the stock register).
+ */
+function filterOptions_(params) {
+  const cacheKey = 'fopts_v' + sregVersion_() + '_all';
+  return withCache_(cacheKey, params.refresh === '1', buildFilterOptions_);
+}
+
+function buildFilterOptions_() {
+  const rows = getAllTxns_();
+  const agencies = new Set();
+  const workOrders = new Set();
+  const schemes = {};
+  rows.forEach(function (r) {
+    const agency = String(r.AgencyDetails || '').trim();
+    if (agency) agencies.add(agency);
+    const wo = String(r.WorkOrderDetails || '').trim();
+    if (wo) workOrders.add(wo);
+    const code = String(r.SchemeCode || '').trim();
+    if (code) schemes[code] = String(r.SchemeName || '');
+  });
+  const byName = function (a, b) { return a.localeCompare(b); };
+  return {
+    agencies: Array.from(agencies).sort(byName),
+    workOrders: Array.from(workOrders).sort(byName),
+    schemes: Object.keys(schemes).sort(byName).map(function (code) {
+      return { schemeCode: code, schemeName: schemes[code] };
+    })
+  };
 }
 
 /* ---------------- Master data (external files, read-only) ---------------- */
