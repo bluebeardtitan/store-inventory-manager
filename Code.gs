@@ -14,23 +14,22 @@
  *    or later via the "update voucher" action.
  *
  * MASTER DATA (kept in your own separate Google Sheet files, entered by you):
- *  - ItemMaster file: columns ItemCode | Description | Unit
- *  - SchemeMaster file: columns SchemeCode | SchemeName
+ *  - Master file (items + schemes): ONE file with two tabs. The "ItemMaster"
+ *    tab has columns ItemCode | Description | Unit; the "SchemeMaster" tab has
+ *    columns SchemeCode | SchemeName.
  *  - Work Order Master: ONE file, with one TAB PER CALENDAR YEAR (e.g. "2025",
  *    "2026"), each with columns AgencyName | WorkOrderNo | WorkOrderDate | NameOfWork
  *  Point this script at them (file IDs/URLs) via Script Properties — see
  *  "CONFIG / COUNTERS" below. This app never writes into these files.
  *
  * CONFIG / COUNTERS (Script Properties, NOT a sheet):
- *  ItemMasterSheetId, SchemeMasterSheetId, WorkOrderMasterSheetId, and the
- *  running HR No. sequence numbers all live in this project's Script
- *  Properties instead of a spreadsheet tab, so they never touch the
- *  Transactions workbook at all.
+ *  MasterSheetId, WorkOrderMasterSheetId, and the running HR No. sequence
+ *  numbers all live in this project's Script Properties instead of a
+ *  spreadsheet tab, so they never touch the Transactions workbook at all.
  *  - To set the master file IDs: run the one-time setupMasterFileIds()
  *    function below (fill in the IDs/URLs first), OR add them directly
  *    under Apps Script editor > Project Settings (gear icon) > Script
- *    Properties, using keys cfg_ItemMasterSheetId, cfg_SchemeMasterSheetId,
- *    cfg_WorkOrderMasterSheetId.
+ *    Properties, using keys cfg_MasterSheetId, cfg_WorkOrderMasterSheetId.
  *  - Counters are stored under keys like ctr_ISS_2026, ctr_RET_2026, etc.,
  *    and need no manual setup.
  *
@@ -63,14 +62,16 @@ const CONFIG_PREFIX = 'cfg_';
 const COUNTER_PREFIX = 'ctr_';
 
 /**
- * ONE-TIME SETUP: fill in your three master data file IDs/URLs below, then
+ * ONE-TIME SETUP: fill in your two master data file IDs/URLs below, then
  * open this project in the Apps Script editor, pick "setupMasterFileIds"
  * from the function dropdown at the top, and click Run once. (Re-run any
  * time you need to change one of these.)
+ * MasterSheetId points at the file holding the "ItemMaster" and "SchemeMaster"
+ * tabs (items + schemes). WorkOrderMasterSheetId is the separate work-order
+ * file with one tab per calendar year.
  */
 function setupMasterFileIds() {
-  setConfigValue_('ItemMasterSheetId', 'PASTE_ITEM_MASTER_ID_OR_URL_HERE');
-  setConfigValue_('SchemeMasterSheetId', 'PASTE_SCHEME_MASTER_ID_OR_URL_HERE');
+  setConfigValue_('MasterSheetId', 'PASTE_MASTER_ID_OR_URL_HERE');
   setConfigValue_('WorkOrderMasterSheetId', 'PASTE_WORK_ORDER_MASTER_ID_OR_URL_HERE');
 }
 
@@ -78,8 +79,13 @@ const TXN_HEADERS = [
   'SlNo', 'Date', 'TransactionType', 'HRNo', 'SchemeCode', 'SchemeName',
   'AgencyDetails', 'WorkOrderDetails', 'NameOfWork',
   'OfficeOrderNo', 'RoadChallanNo', 'ItemNo',
-  'ItemCode', 'ItemDescription', 'Qty', 'Unit', 'VoucherNo', 'CreatedAt'
+  'ItemCode', 'ItemDescription', 'Qty', 'Unit', 'VoucherNo'
 ];
+
+const TX_TYPE_ISSUE = 'Issue';
+const TX_TYPE_RECEIPT = 'Receipt';
+const COL_DATE = TXN_HEADERS.indexOf('Date');
+const COL_VOUCHER_NO = TXN_HEADERS.indexOf('VoucherNo');
 
 function getSS() {
   return SpreadsheetApp.getActiveSpreadsheet();
@@ -96,7 +102,8 @@ function ensureSheet_(name, headers) {
 }
 
 /**
- * Non-fatal init: archives the year if needed and ensures the live
+ * Non-fatal init: applies the one-time schema migration (drops the removed
+ * CreatedAt column), archives the year if needed and ensures the live
  * Transactions tab exists. Never throws — a transient Script Properties or
  * spreadsheet hiccup must degrade to a JSON error (or a cache miss), never
  * to an HTML 500 that the frontend misreads as "backend unreachable".
@@ -104,8 +111,24 @@ function ensureSheet_(name, headers) {
  * actually need to build from the sheets.
  */
 function init_() {
+  try { dropCreatedAtColumn_(); } catch (err) {}
   try { archiveYearIfNeeded_(); } catch (err) {}
   try { ensureSheet_(TXN_SHEET, TXN_HEADERS); } catch (err) {}
+}
+
+/**
+ * One-time schema migration: the CreatedAt stamp column was removed, so any
+ * transaction sheet (live or archived) that still carries a "CreatedAt"
+ * header has that column deleted to keep all rows aligned with TXN_HEADERS.
+ * Runs before year-end archiving so newly created archives are born clean.
+ * Non-fatal by design (see init_()).
+ */
+function dropCreatedAtColumn_() {
+  getAllTxnSheets_().forEach(function (sh) {
+    const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    const idx = headers.indexOf('CreatedAt');
+    if (idx > -1) sh.deleteColumn(idx + 1);
+  });
 }
 
 /* ---------------- Year-end archiving ---------------- */
@@ -136,7 +159,7 @@ function archiveYearIfNeeded_() {
   const byYear = {};
   const toArchive = [];
   for (let i = 1; i < data.length; i++) {
-    const d = new Date(data[i][1]);
+    const d = new Date(data[i][COL_DATE]);
     const y = isNaN(d.getTime()) ? 0 : d.getFullYear();
     if (y && y < currentYear) {
       (byYear[y] = byYear[y] || []).push(i);
@@ -333,9 +356,7 @@ function jsonOut_(obj) {
 /* ---------------- HR No. numbering (auto) ---------------- */
 
 function pad_(n, width) {
-  n = String(n);
-  while (n.length < width) n = '0' + n;
-  return n;
+  return String(n).padStart(width, '0');
 }
 
 /* ---------------- Counters (Script Properties) ---------------- */
@@ -360,7 +381,7 @@ function nextSeq_(key) {
  */
 function generateHrNo_(type, dateObj) {
   const calYear = dateObj.getFullYear();
-  const prefix = (type === 'Issue') ? 'ISS' : 'RET';
+  const prefix = (type === TX_TYPE_ISSUE) ? 'ISS' : 'RET';
   const hrSeq = nextSeq_('HR_' + type + '_' + calYear);
   return prefix + '/' + pad_(hrSeq, 3) + '/BD-I';
 }
@@ -383,39 +404,46 @@ function generateHrNo_(type, dateObj) {
 function addTransaction_(body) {
   if (!body.items || !body.items.length) throw new Error('At least one item line is required.');
   const sh = ensureSheet_(TXN_SHEET, TXN_HEADERS);
-  const dateObj = new Date(body.date + 'T00:00:00');
-  const hrNo = generateHrNo_(body.transactionType, dateObj);
-  const now = new Date();
+  const hrNo = generateHrNo_(body.transactionType, new Date(body.date + 'T00:00:00'));
   let slNo = Math.max(0, sh.getLastRow() - 1);
 
   const rows = body.items.map(function (it, idx) {
     slNo += 1;
-    return [
-      slNo,
-      body.date,
-      body.transactionType,
-      hrNo,
-      body.schemeCode || '',
-      body.schemeName || '',
-      body.agencyDetails || '',
-      body.workOrderDetails || '',
-      body.nameOfWork || '',
-      body.officeOrderNo || '',
-      body.roadChallanNo || '',
-      idx + 1,
-      it.itemCode || '',
-      it.itemDescription || '',
-      Number(it.qty) || 0,
-      it.unit || '',
-      body.voucherNo || '',
-      now
-    ];
+    return buildTxnRow_({
+      SlNo: slNo,
+      Date: body.date,
+      TransactionType: body.transactionType,
+      HRNo: hrNo,
+      SchemeCode: body.schemeCode,
+      SchemeName: body.schemeName,
+      AgencyDetails: body.agencyDetails,
+      WorkOrderDetails: body.workOrderDetails,
+      NameOfWork: body.nameOfWork,
+      OfficeOrderNo: body.officeOrderNo,
+      RoadChallanNo: body.roadChallanNo,
+      ItemNo: idx + 1,
+      ItemCode: it.itemCode,
+      ItemDescription: it.itemDescription,
+      Qty: Number(it.qty) || 0,
+      Unit: it.unit,
+      VoucherNo: body.voucherNo
+    });
   });
 
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, TXN_HEADERS.length).setValues(rows);
   invalidateReadCaches_();
 
   return { success: true, hrNo: hrNo, voucherNo: body.voucherNo || '', lines: rows.length };
+}
+
+/**
+ * Aligns a named set of transaction values to the TXN_HEADERS column order,
+ * so column renames/reorders only need a change in TXN_HEADERS.
+ */
+function buildTxnRow_(values) {
+  return TXN_HEADERS.map(function (header) {
+    return values[header] == null ? '' : values[header];
+  });
 }
 
 /**
@@ -427,12 +455,13 @@ function addTransaction_(body) {
 function updateVoucher_(body) {
   if (!body.hrNo || !body.voucherNo) throw new Error('hrNo and voucherNo are both required.');
   const sheets = getAllTxnSheets_();
+  const col = COL_VOUCHER_NO + 1;
   let updated = 0;
   sheets.forEach(function (sh) {
     const rows = sheetRowsAsObjects_(sh);
     rows.forEach(function (r) {
       if (r['HRNo'] === body.hrNo) {
-        sh.getRange(r.__row + 1, TXN_HEADERS.indexOf('VoucherNo') + 1).setValue(body.voucherNo);
+        sh.getRange(r.__row + 1, col).setValue(body.voucherNo);
         updated++;
       }
     });
@@ -453,17 +482,20 @@ function getAllTxnSheets_() {
 }
 
 function getAllTxns_() {
-  const sheets = getAllTxnSheets_();
-  let rows = [];
-  sheets.forEach(function (sh) { rows = rows.concat(sheetRowsAsObjects_(sh)); });
-  return rows;
+  return getAllTxnSheets_().reduce(function (acc, sh) {
+    return acc.concat(sheetRowsAsObjects_(sh));
+  }, []);
 }
 
 function listTransactions_(params) {
-  let rows = getAllTxns_();
-  rows = applyFilters_(rows, params);
+  const rows = applyFilters_(getAllTxns_(), params);
   rows.sort(byNewest);
   return { rows: rows, count: rows.length };
+}
+
+/** Case-insensitive substring match; missing values never match. */
+function containsText_(value, query) {
+  return String(value || '').toLowerCase().indexOf(query) > -1;
 }
 
 function applyFilters_(rows, params) {
@@ -489,21 +521,21 @@ function applyFilters_(rows, params) {
   }
   if (params.agency) {
     const q = params.agency.toLowerCase();
-    rows = rows.filter(function (r) { return (r.AgencyDetails || '').toLowerCase().indexOf(q) > -1; });
+    rows = rows.filter(function (r) { return containsText_(r.AgencyDetails, q); });
   }
   if (params.workOrder) {
     const q = params.workOrder.toLowerCase();
-    rows = rows.filter(function (r) { return (r.WorkOrderDetails || '').toLowerCase().indexOf(q) > -1; });
+    rows = rows.filter(function (r) { return containsText_(r.WorkOrderDetails, q); });
   }
   if (params.q) {
     const q = params.q.toLowerCase();
     rows = rows.filter(function (r) {
-      return (r.AgencyDetails || '').toLowerCase().indexOf(q) > -1 ||
-        (r.WorkOrderDetails || '').toLowerCase().indexOf(q) > -1 ||
-        (r.NameOfWork || '').toLowerCase().indexOf(q) > -1 ||
-        (r.ItemDescription || '').toLowerCase().indexOf(q) > -1 ||
-        (r.HRNo || '').toLowerCase().indexOf(q) > -1 ||
-        (r.VoucherNo || '').toLowerCase().indexOf(q) > -1;
+      return containsText_(r.AgencyDetails, q) ||
+        containsText_(r.WorkOrderDetails, q) ||
+        containsText_(r.NameOfWork, q) ||
+        containsText_(r.ItemDescription, q) ||
+        containsText_(r.HRNo, q) ||
+        containsText_(r.VoucherNo, q);
     });
   }
   return rows;
@@ -559,12 +591,12 @@ function buildStockRegister_(params) {
     }
     const d = new Date(r.Date);
     const qty = Number(r.Qty) || 0;
-    const signed = (r.TransactionType === 'Receipt') ? qty : -qty;
+    const signed = (r.TransactionType === TX_TYPE_RECEIPT) ? qty : -qty;
 
     if (from && d < from) {
       byItem[key].opening += signed;
     } else if (isInRange_(d, from, to)) {
-      if (r.TransactionType === 'Receipt') byItem[key].received += qty;
+      if (r.TransactionType === TX_TYPE_RECEIPT) byItem[key].received += qty;
       else byItem[key].issued += qty;
       byItem[key].movements.push({
         date: r.Date, type: r.TransactionType, hrNo: r.HRNo, voucherNo: r.VoucherNo,
@@ -630,14 +662,18 @@ function getMeta_(force) {
 function buildMeta_() {
   const cfg = getConfigMap_();
 
-  const itemTab = openExternalTab_(cfg['ItemMasterSheetId'], 'ItemMaster');
+  // Items and schemes share one master file (tabs "ItemMaster" / "SchemeMaster").
+  // Falls back to the old separate-file keys until they've been replaced.
+  const masterId = cfg['MasterSheetId'];
+
+  const itemTab = openExternalTab_(masterId || cfg['ItemMasterSheetId'], 'ItemMaster');
   const items = itemTab
     ? sheetRowsAsObjects_(itemTab)
         .map(r => ({ itemCode: r['ItemCode'], description: r['Description'], unit: r['Unit'] }))
         .filter(i => i.itemCode)
     : [];
 
-  const schemeTab = openExternalTab_(cfg['SchemeMasterSheetId'], 'SchemeMaster');
+  const schemeTab = openExternalTab_(masterId || cfg['SchemeMasterSheetId'], 'SchemeMaster');
   const schemes = schemeTab
     ? sheetRowsAsObjects_(schemeTab)
         .map(r => ({ schemeCode: r['SchemeCode'], schemeName: r['SchemeName'] }))
@@ -713,11 +749,11 @@ function searchWorkOrders_(params) {
   let rows = sheetRowsAsObjects_(tab);
   if (params.q) {
     const q = params.q.toLowerCase();
-    rows = rows.filter(r =>
-      String(r['AgencyName'] || '').toLowerCase().indexOf(q) > -1 ||
-      String(r['WorkOrderNo'] || '').toLowerCase().indexOf(q) > -1 ||
-      String(r['NameOfWork'] || '').toLowerCase().indexOf(q) > -1
-    );
+    rows = rows.filter(function (r) {
+      return containsText_(r['AgencyName'], q) ||
+        containsText_(r['WorkOrderNo'], q) ||
+        containsText_(r['NameOfWork'], q);
+    });
   }
   return { rows: rows.slice(0, 20) };
 }
@@ -732,36 +768,57 @@ function buildDashboard_() {
   const rows = getAllTxns_();
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const month = tallyMonth_(rows, monthStart);
+  const yearHrs = tallyYearHrs_(rows, now.getFullYear());
+  const position = tallyStockPosition_(rows);
+  return {
+    monthIssuedQty: month.issuedQty, monthReceivedQty: month.receivedQty,
+    monthIssuedLines: month.issuedLines, monthReceivedLines: month.receivedLines,
+    yearIssuedHrs: yearHrs.issued, yearReceivedHrs: yearHrs.received,
+    positiveStock: position.positive, negativeStock: position.negative,
+    totalTxns: rows.length,
+    pendingVoucher: rows.filter(function (r) { return !r.VoucherNo; }).length,
+    recent: rows.slice().sort(byNewest).slice(0, 8)
+  };
+}
+
+/** Quantities and line counts for the current month, split by transaction type. */
+function tallyMonth_(rows, monthStart) {
   let issuedQty = 0, receivedQty = 0, issuedLines = 0, receivedLines = 0;
-  const issuedHrs = new Set(), receivedHrs = new Set();
+  rows.forEach(function (r) {
+    if (new Date(r.Date) >= monthStart) {
+      if (r.TransactionType === TX_TYPE_ISSUE) { issuedQty += Number(r.Qty) || 0; issuedLines++; }
+      else { receivedQty += Number(r.Qty) || 0; receivedLines++; }
+    }
+  });
+  return {
+    issuedQty: issuedQty, receivedQty: receivedQty,
+    issuedLines: issuedLines, receivedLines: receivedLines
+  };
+}
+
+/** Distinct HR nos. transacted in the given calendar year, split by type. */
+function tallyYearHrs_(rows, year) {
+  const issued = new Set(), received = new Set();
+  rows.forEach(function (r) {
+    if (new Date(r.Date).getFullYear() !== year) return;
+    if (r.TransactionType === TX_TYPE_ISSUE) issued.add(String(r.HRNo));
+    else if (r.TransactionType === TX_TYPE_RECEIPT) received.add(String(r.HRNo));
+  });
+  return { issued: issued.size, received: received.size };
+}
+
+/** Counts of materials with all-time closing stock above/below zero. */
+function tallyStockPosition_(rows) {
   const stock = {};
   rows.forEach(function (r) {
-    const d = new Date(r.Date);
     const qty = Number(r.Qty) || 0;
-    if (d >= monthStart) {
-      if (r.TransactionType === 'Issue') { issuedQty += qty; issuedLines++; }
-      else { receivedQty += qty; receivedLines++; }
-    }
-    if (d.getFullYear() === now.getFullYear()) {
-      if (r.TransactionType === 'Issue') issuedHrs.add(String(r.HRNo));
-      else if (r.TransactionType === 'Receipt') receivedHrs.add(String(r.HRNo));
-    }
-    stock[r.ItemCode] = (stock[r.ItemCode] || 0) + (r.TransactionType === 'Receipt' ? qty : -qty);
+    stock[r.ItemCode] = (stock[r.ItemCode] || 0) + (r.TransactionType === TX_TYPE_RECEIPT ? qty : -qty);
   });
-  let positiveStock = 0, negativeStock = 0;
+  let positive = 0, negative = 0;
   Object.keys(stock).forEach(function (k) {
-    if (stock[k] > 0) positiveStock++;
-    else if (stock[k] < 0) negativeStock++;
+    if (stock[k] > 0) positive++;
+    else if (stock[k] < 0) negative++;
   });
-  const pendingVoucher = rows.filter(function (r) { return !r.VoucherNo; }).length;
-  const recent = rows
-    .sort(byNewest)
-    .slice(0, 8);
-  return {
-    monthIssuedQty: issuedQty, monthReceivedQty: receivedQty,
-    monthIssuedLines: issuedLines, monthReceivedLines: receivedLines,
-    yearIssuedHrs: issuedHrs.size, yearReceivedHrs: receivedHrs.size,
-    positiveStock: positiveStock, negativeStock: negativeStock,
-    totalTxns: rows.length, pendingVoucher: pendingVoucher, recent: recent
-  };
+  return { positive: positive, negative: negative };
 }
