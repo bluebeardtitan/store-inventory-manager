@@ -356,33 +356,20 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .ledger-rule::after{content:''; position:absolute; left:0; right:0; top:3px; height:1px; background:var(--rule-strong);}
 
 .ldg-chart{margin-top:12px;}
-.ldg-head{display:grid; grid-template-columns:24px minmax(0,1.25fr) repeat(3,minmax(0,1fr)); column-gap:10px; padding:0 0 7px;}
-.ldg-head > span{font-size:10px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; color:var(--ink-mut); border-bottom:1.5px solid var(--rule-strong); padding-bottom:5px;}
-.ldg-head .rcv{color:var(--receipt);}
-.ldg-head .iss{color:var(--margin);}
-.ldg-head .stk{color:var(--ink);}
 
-.ldg-checkall{padding:8px 0 9px; border-bottom:1px solid var(--rule-strong);}
-.ldg-checkall label{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--ink); cursor:pointer;}
-.ldg-checkall input,.ldg-check input{appearance:none; width:15px; height:15px; border:1.5px solid var(--rule-strong); border-radius:2px; background:#FFFDF5; cursor:pointer; position:relative; flex-shrink:0;}
-.ldg-checkall input:checked,.ldg-checkall input:indeterminate,.ldg-check input:checked{border-color:var(--ink);}
-.ldg-checkall input:checked::after,.ldg-check input:checked::after{content:''; position:absolute; left:3px; top:1px; width:4px; height:8px; border:solid var(--ink); border-width:0 2px 2px 0; transform:rotate(42deg);}
-.ldg-checkall input:indeterminate::after{content:''; position:absolute; left:3px; top:6px; width:7px; border-bottom:2px solid var(--ink);}
-
-.ldg-row{display:grid; grid-template-columns:24px minmax(0,1.25fr) repeat(3,minmax(0,1fr)); column-gap:10px; align-items:center; border-bottom:1px solid rgba(30,41,64,.07);}
-.ldg-check{display:flex; align-items:center; padding:9px 0;}
-.ldg-id{display:flex; align-items:flex-start; gap:8px; background:none; border:none; padding:9px 0; text-align:left; cursor:pointer; min-width:0; font-family:var(--body);}
-.ldg-code{font-family:var(--stamp); font-size:12.5px; color:var(--ink); flex-shrink:0; line-height:1.35;}
-.ldg-desc{font-size:12.5px; color:var(--ink-mut); white-space:normal; overflow:visible; min-width:0; flex:1; line-height:1.35;}
-.ldg-unit{font-size:10.5px; color:var(--ink-mut); opacity:.75; margin-left:5px; flex-shrink:0;}
+.ldg-row{display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid rgba(30,41,64,.07);}
+.ldg-id{display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; padding:0; text-align:left; cursor:pointer; min-width:0; font-family:var(--body);}
+.ldg-idline{display:block; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35;}
+.ldg-code{font-family:var(--stamp); font-size:12.5px; color:var(--ink);}
+.ldg-desc{font-size:12.5px; color:var(--ink-mut); margin-left:8px;}
+.ldg-unit{font-size:10.5px; color:var(--ink-mut); opacity:.75; margin-left:5px;}
 .ldg-id .chev{color:var(--rule-strong); font-size:11px; flex-shrink:0; margin-left:auto; transition:transform .15s ease;}
 .ldg-row.open .chev{color:var(--margin);}
-.ldg-row.off > .ldg-id .ldg-desc,.ldg-row.off > .ldg-id .ldg-code{opacity:.45;}
-.ldg-row.off .ldg-bar{display:none;}
-.ldg-row.off .ldg-num{opacity:.4;}
+.ldg-row.open .ldg-idline{white-space:normal; overflow:visible; text-overflow:clip;}
 
-.ldg-cell{display:flex; align-items:center; gap:6px; min-width:0; padding:9px 0;}
-.ldg-celabel{display:none; font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--ink-mut); min-width:52px;}
+.ldg-bars{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:14px;}
+.ldg-cell{display:flex; align-items:center; gap:6px; min-width:0;}
+.ldg-celabel{font-size:9.5px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--ink-mut); flex-shrink:0;}
 .ldg-track{flex:1; height:12px; position:relative; min-width:18px;
   background:repeating-linear-gradient(0deg, transparent 0 4px, rgba(30,41,64,.055) 4px 5px);}
 .ldg-track::before{content:''; position:absolute; left:0; right:0; bottom:0; height:1px; background:rgba(30,41,64,.28);}
@@ -395,7 +382,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .ldg-num.iss{color:var(--margin);}
 .ldg-num.stk{color:var(--ink);}
 
-.ldg-detail{grid-column:1/-1; padding:2px 0 14px;}
+.ldg-detail{padding:2px 0 14px;}
 .ldg-detail-head{display:flex; justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap; margin:10px 0;}
 .ldg-idcol{display:flex; flex-direction:column; gap:2px; min-width:0;}
 .ldg-detail-head .ldg-code{font-family:var(--stamp); font-size:13px; color:var(--margin);}
@@ -413,20 +400,6 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .mvm-sub{display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--ink-mut);}
 .mvm-vch{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .mvm-agency{font-size:12px; color:var(--ink); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-
-@media (max-width:600px){
-  .ldg-head{display:none;}
-  .ldg-row{grid-template-columns:24px minmax(0,1fr); row-gap:3px; padding:9px 0;}
-  .ldg-row > *{padding:0;}
-  .ldg-check{grid-column:1; grid-row:1; align-self:start;}
-  .ldg-id{grid-column:2; grid-row:1;}
-  .ldg-cell{grid-column:2;}
-  .ldg-cell.rcv{grid-row:2;}
-  .ldg-cell.iss{grid-row:3;}
-  .ldg-cell.stk{grid-row:4;}
-  .ldg-celabel{display:block;}
-  .ldg-detail{grid-row:auto;}
-}
 
 @media (prefers-reduced-motion: reduce){
   .ldg-bar,.ldg-id .chev{transition:none;}
@@ -870,8 +843,14 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
       <div><label for="regFrom">From</label><input type="date" id="regFrom" name="regFrom"></div>
       <div><label for="regTo">To</label><input type="date" id="regTo" name="regTo"></div>
     </div>
-    <label for="regItem">Item code <span class="opt">(leave blank for all)</span></label>
-    <input type="text" id="regItem" name="regItem" list="itemList" placeholder="e.g. SM/01013">
+    <div data-reg-field="agency">
+      <label for="regAgency">Agency name <span class="opt">(leave blank for all)</span></label>
+      <input type="text" id="regAgency" name="regAgency" list="agencyList" placeholder="e.g. Jogmaya Engineering">
+    </div>
+    <div data-reg-field="material" class="hidden">
+      <label for="regItem">Item code <span class="opt">(leave blank for all)</span></label>
+      <input type="text" id="regItem" name="regItem" list="itemList" placeholder="e.g. SM/01013">
+    </div>
     <datalist id="itemList"></datalist>
     <button type="button" class="primary" id="btnGenerateRegister">Generate register</button>
   </div>
@@ -997,6 +976,8 @@ const CACHE_RD_WO_KEY = 'bdi_cache_rd_wo';
 const CACHE_META_TTL = 12*3600e3; // items/schemes change rarely — 12h
 const CACHE_WO_TTL = 6*3600e3;    // work order master — 6h, revalidated on search
 const CACHE_RD_TTL = 30*24*3600e3; // learned movement-report dropdown options — 30d
+const CACHE_TXN_ITEMS_KEY = 'bdi_cache_txn_items';
+const CACHE_TXN_ITEMS_TTL = 30*60e3; // items that actually have transactions — 30m, mirrors server sreg cache
 
 function cacheRead(key, ttl){
   try{
@@ -1163,6 +1144,7 @@ $('btnRefreshMeta').addEventListener('click', async ()=>{
     toast('Master data refreshed');
     updateMetaCacheStatus();
     prefetchWoIndex();
+    loadTransactedItems(true);
   }catch(err){
     status.textContent = 'Refresh failed: ' + err.message;
   }
@@ -1170,7 +1152,6 @@ $('btnRefreshMeta').addEventListener('click', async ()=>{
 
 function renderMetaLists(){
   $('schemeList').innerHTML = META.schemes.map(s=>`<option value="${escapeHtml(s.schemeCode)}">${escapeHtml(s.schemeName)}</option>`).join('');
-  $('itemList').innerHTML = META.items.map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description)}</option>`).join('');
 }
 function loadMetaFromCache(){
   const c = cacheRead(CACHE_META_KEY, CACHE_META_TTL);
@@ -1186,6 +1167,26 @@ async function loadMeta(force){
   cacheWrite(CACHE_META_KEY, data);
   renderMetaLists();
   populateYearSelect();
+}
+
+function paintItemList(items){
+  $('itemList').innerHTML = items.slice()
+    .sort((a,b)=>String(a.itemCode).localeCompare(String(b.itemCode)))
+    .map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description||'')}</option>`).join('');
+}
+async function loadTransactedItems(force){
+  const c = force ? null : cacheRead(CACHE_TXN_ITEMS_KEY, CACHE_TXN_ITEMS_TTL);
+  if(c){
+    paintItemList(c.data);
+    if(!c.stale) return;
+  }
+  try{
+    const data = await apiGet('stockRegister', force ? { refresh:'1' } : {});
+    if(data.items){
+      paintItemList(data.items);
+      cacheWrite(CACHE_TXN_ITEMS_KEY, data.items);
+    }
+  }catch(e){ /* keep whatever is already painted (cache, or nothing yet) */ }
 }
 
 function escapeHtml(s){
@@ -1259,7 +1260,6 @@ $('posShort').addEventListener('click', ()=>openLedger({ from:'', to:todayStr(),
 const CACHE_SREG_KEY = 'bdi_cache_sreg_';
 const CACHE_SREG_TTL = 10*60e3;  // ledger is per-range; server cache backs it up
 let ledgerItems = [];       // items from stockRegister (full range)
-let ledgerSel = null;       // Set of selected itemCodes
 let ledgerOpen = null;      // expanded itemCode or null
 
 function todayStr(){
@@ -1285,14 +1285,8 @@ function filterLedgerItems(){
     return true;
   });
 }
-function reconcileLedgerSel(){
-  const codes = ledgerItems.map(i=>i.itemCode);
-  if(!ledgerSel){
-    ledgerSel = new Set(codes);
-    return;
-  }
-  ledgerSel = new Set([...ledgerSel].filter(c=>codes.includes(c)));
-  if(ledgerOpen && !codes.includes(ledgerOpen)) ledgerOpen = null;
+function reconcileLedgerOpen(){
+  if(ledgerOpen && !ledgerItems.some(i=>i.itemCode===ledgerOpen)) ledgerOpen = null;
 }
 function updateLedgerMeta(){
   const from = $('ledFrom').value, to = $('ledTo').value;
@@ -1302,12 +1296,12 @@ function updateLedgerMeta(){
   $('ledgerMeta').textContent = (total && shown!==total) ? shown + ' of ' + total + ' material(s) · ' + range
     : (total ? total + ' material(s) · ' + range : '');
 }
-function barCell(cls, val, max, on){
-  const pct = on ? Math.min(100, Math.round(Math.abs(val)/max*100)) : 0;
+function barCell(cls, val, max){
+  const pct = Math.min(100, Math.round(Math.abs(val)/max*100));
   const lbl = cls==='rcv' ? 'Received' : cls==='iss' ? 'Issued' : 'Stock';
   return `<div class="ldg-cell ${cls}">
     <span class="ldg-celabel">${lbl}</span>
-    <div class="ldg-track">${on?`<div class="ldg-bar ${cls}" style="width:${pct}%"></div>`:''}</div>
+    <div class="ldg-track"><div class="ldg-bar ${cls}" style="width:${pct}%"></div></div>
     <span class="ldg-num ${cls}">${fmtQty(val)}</span>
   </div>`;
 }
@@ -1333,14 +1327,6 @@ function ledgerDetailHTML(it){
     <div class="ldg-cards">${cards}</div>
   </div>`;
 }
-function syncLedgerCheckAll(){
-  const all = $('ledgerCheckAll');
-  if(!all) return;
-  const codes = filterLedgerItems().map(i=>i.itemCode);
-  const sel = codes.filter(c=>ledgerSel.has(c));
-  all.checked = codes.length>0 && sel.length===codes.length;
-  all.indeterminate = sel.length>0 && sel.length<codes.length;
-}
 function renderLedger(){
   const chart = $('ledgerChart');
   const visible = filterLedgerItems();
@@ -1354,58 +1340,39 @@ function renderLedger(){
     updateLedgerMeta();
     return;
   }
-  reconcileLedgerSel();
+  reconcileLedgerOpen();
   const items = visible.slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
   const max = items.reduce((m,it)=>Math.max(m, it.received, it.issued, Math.abs(it.closing)), 1);
   chart.innerHTML = `
     <div class="ldg-chart">
-      <div class="ldg-head">
-        <span></span><span>Material</span>
-        <span class="rcv">Received</span><span class="iss">Issued</span><span class="stk">Stock</span>
-      </div>
-      <div class="ldg-checkall">
-        <label><input type="checkbox" id="ledgerCheckAll"><span>All materials</span></label>
-      </div>
       <div id="ldgRows">
         ${items.map(it=>{
-          const on = ledgerSel.has(it.itemCode);
           const open = ledgerOpen===it.itemCode;
-          return `<div class="ldg-row ${on?'':'off'} ${open?'open':''}" data-code="${escapeHtml(it.itemCode)}">
-            <div class="ldg-check"><input type="checkbox" name="ledgerSel" aria-label="Show ${escapeHtml(it.itemCode)}" data-sel="1" ${on?'checked':''}></div>
-            <button type="button" class="ldg-id" data-open="1">
-              <span class="ldg-code">${escapeHtml(it.itemCode)}</span>
-              <span class="ldg-desc">${escapeHtml(it.description)}</span>
-              <span class="ldg-unit">${escapeHtml(it.unit)}</span>
+          const fullName = [it.itemCode, it.description, it.unit].filter(Boolean).join(' · ');
+          return `<div class="ldg-row ${open?'open':''}" data-code="${escapeHtml(it.itemCode)}">
+            <button type="button" class="ldg-id" data-open="1" title="${escapeHtml(fullName)}">
+              <span class="ldg-idline">
+                <span class="ldg-code">${escapeHtml(it.itemCode)}</span><span class="ldg-desc">${escapeHtml(it.description)}</span><span class="ldg-unit">${escapeHtml(it.unit)}</span>
+              </span>
               <span class="chev">▾</span>
             </button>
-            ${barCell('rcv', it.received, max, on)}
-            ${barCell('iss', it.issued, max, on)}
-            ${barCell('stk', it.closing, max, on)}
+            <div class="ldg-bars">
+              ${barCell('rcv', it.received, max)}
+              ${barCell('iss', it.issued, max)}
+              ${barCell('stk', it.closing, max)}
+            </div>
             ${open ? ledgerDetailHTML(it) : ''}
           </div>`;
         }).join('')}
       </div>
     </div>`;
-  const all = $('ledgerCheckAll');
-  all.addEventListener('change', ()=>{
-    const items = filterLedgerItems().slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
-    ledgerSel = all.checked ? new Set(items.map(i=>i.itemCode)) : new Set();
-    renderLedger();
-  });
   chart.querySelectorAll('.ldg-row').forEach(row=>{
-    const sel = row.querySelector('[data-sel]');
-    sel.addEventListener('change', ()=>{
-      const code = row.dataset.code;
-      if(sel.checked) ledgerSel.add(code); else ledgerSel.delete(code);
-      renderLedger();
-    });
     row.querySelector('[data-open]').addEventListener('click', ()=>{
       const code = row.dataset.code;
       ledgerOpen = (ledgerOpen===code) ? null : code;
       renderLedger();
     });
   });
-  syncLedgerCheckAll();
   updateLedgerMeta();
 }
 async function loadLedger(force){
@@ -1875,6 +1842,7 @@ $('btnSubmit').addEventListener('click', async ()=>{
     $('itemLines').innerHTML='';
     addItemLine();
     loadMeta();
+    loadTransactedItems(true);
   }catch(err){
     toast('Error: ' + err.message);
   }finally{
@@ -1895,6 +1863,9 @@ document.querySelectorAll('.reg-scope-btn').forEach(btn=>{
       const on = b===btn;
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('[data-reg-field]').forEach(f=>{
+      f.classList.toggle('hidden', f.dataset.regField !== regView);
     });
   });
 });
@@ -2040,7 +2011,7 @@ function regSheetHTML(bodyHTML, meta){
     <div class="reg-sheet-head">
       <div class="reg-kicker">${escapeHtml(OFFICE_NAME)} — Store</div>
       <div class="reg-title" id="regTitle" contenteditable="true" spellcheck="false">${escapeHtml(localStorage.getItem(REG_TITLE_KEY) || 'Material stock register')}</div>
-      <div class="reg-meta">Period: <b>${meta.from ? fmtDate(meta.from) : 'From start'}</b> to <b>${meta.to ? fmtDate(meta.to) : 'Today'}</b>${meta.item ? ' · Item: <b>'+escapeHtml(meta.item)+'</b>' : ''}</div>
+      <div class="reg-meta">Period: <b>${meta.from ? fmtDate(meta.from) : 'From start'}</b> to <b>${meta.to ? fmtDate(meta.to) : 'Today'}</b>${meta.agency ? ' · Agency: <b>'+escapeHtml(meta.agency)+'</b>' : ''}${meta.item ? ' · Item: <b>'+escapeHtml(meta.item)+'</b>' : ''}</div>
     </div>
     ${bodyHTML}
     <div class="reg-sheet-foot">Prepared from the store register · ${escapeHtml(STORE_NAME)}</div>
@@ -2057,27 +2028,35 @@ $('btnGenerateRegister').addEventListener('click', async ()=>{
   btn.disabled = true; btn.textContent = 'Building register…';
   const from = $('regFrom').value;
   const to = $('regTo').value;
+  const agency = $('regAgency').value.trim();
   const itemCode = $('regItem').value.trim();
   try{
-    const params = { from, to, itemCode };
-    const [listData, sregData] = await Promise.all([
-      apiGet('list', params),
-      apiGet('stockRegister', params)
-    ]);
-    regRows = listData.rows || [];
+    let sregData = { items: [] };
+    if(regView === 'agency'){
+      const [listData] = await Promise.all([ apiGet('list', { from, to, agency }) ]);
+      regRows = listData.rows || [];
+    }else{
+      const [listData, sr] = await Promise.all([
+        apiGet('list', { from, to, itemCode }),
+        apiGet('stockRegister', { from, to, itemCode })
+      ]);
+      regRows = listData.rows || [];
+      sregData = sr;
+    }
     regBalances = sregData.items || [];
     const wrap = $('registerResults');
     const body = $('registerBody');
     wrap.classList.remove('hidden');
     if(!regRows.length){
-      body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements in this range. Widen the dates or clear the item code.</div>';
+      body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements in this range. Widen the dates or clear the '
+        + (regView==='agency' ? 'agency name' : 'item code') + '.</div>';
       $('regCount').textContent = '';
       return;
     }
     const bodyHTML = (regView==='agency')
       ? regAgencySheet(regRows, regBalances)
       : regMaterialSheet(regRows, regBalances);
-    body.innerHTML = regSheetHTML(bodyHTML, { from, to, item: itemCode });
+    body.innerHTML = regSheetHTML(bodyHTML, { from, to, agency, item: itemCode });
     $('regCount').textContent = regRows.length + ' line(s) · ' + new Set(regRows.map(r=>r.ItemCode)).size + ' material(s)';
     bindRegTitle();
   }catch(err){ toast('Error: ' + err.message); }
@@ -2169,6 +2148,7 @@ loadMetaFromCache();
 populateYearSelect();
 updateMetaCacheStatus();
 refreshRdDatalists();
+loadTransactedItems();
 if(SCRIPT_URL){
   loadMeta().then(()=>{
     $('syncDot').classList.remove('off');
