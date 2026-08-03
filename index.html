@@ -153,6 +153,11 @@ label:first-child{margin-top:0;}
   overflow-wrap:break-word;
 }
 .ix-empty{padding:12px 10px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
+.ix-row.ix-any{opacity:.72;}
+.ix-row.ix-any .ix-code{color:#C9BF9E;}
+.ix-row.ix-any:hover, .ix-row.ix-any.active{opacity:1;}
+.ix-row.ix-any .ix-name{color:var(--ink-mut);}
+.ix-row.ix-any.active .ix-name, .ix-row.ix-any:hover .ix-name{color:var(--ink);}
 
 input[type=text], input[type=date], input[type=number], textarea, select{
   width:100%; padding:9px 2px;
@@ -694,18 +699,25 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     </div>
     <div class="rd-scope" data-rd-scope="agency">
       <label for="rdAgency">Agency name <span class="opt">(part is fine)</span></label>
-      <input type="text" id="rdAgency" name="rdAgency" list="agencyList" placeholder="e.g. Jogmaya Engineering">
+      <div class="field-wrap">
+        <input type="text" id="rdAgency" name="rdAgency" placeholder="e.g. Jogmaya Engineering" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rdAgencySuggest">
+        <div id="rdAgencySuggest" class="ix-panel"></div>
+      </div>
     </div>
     <div class="rd-scope hidden" data-rd-scope="workOrder">
       <label for="rdWorkOrder">Work order no. <span class="opt">(part is fine)</span></label>
-      <input type="text" id="rdWorkOrder" name="rdWorkOrder" list="workOrderList" placeholder="e.g. 1247/BD-I">
+      <div class="field-wrap">
+        <input type="text" id="rdWorkOrder" name="rdWorkOrder" placeholder="e.g. 1247/BD-I" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rdWorkOrderSuggest">
+        <div id="rdWorkOrderSuggest" class="ix-panel"></div>
+      </div>
     </div>
     <div class="rd-scope hidden" data-rd-scope="scheme">
       <label for="rdScheme">Scheme code</label>
-      <input type="text" id="rdScheme" name="rdScheme" list="schemeList" placeholder="Leave blank for all schemes">
+      <div class="field-wrap">
+        <input type="text" id="rdScheme" name="rdScheme" placeholder="Leave blank for all schemes" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rdSchemeSuggest">
+        <div id="rdSchemeSuggest" class="ix-panel"></div>
+      </div>
     </div>
-    <datalist id="agencyList"></datalist>
-    <datalist id="workOrderList"></datalist>
     <div class="rd-dates">
       <div><label for="rdFrom">From</label><input type="date" id="rdFrom" name="rdFrom"></div>
       <div><label for="rdTo">To</label><input type="date" id="rdTo" name="rdTo"></div>
@@ -780,7 +792,6 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
           <input type="text" id="fSchemeName" placeholder="Scheme name">
         </div>
       </div>
-      <datalist id="schemeList"></datalist>
     </section>
 
     <section class="fld-block">
@@ -845,11 +856,17 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     </div>
     <div data-reg-field="agency">
       <label for="regAgency">Agency name <span class="opt">(leave blank for all)</span></label>
-      <input type="text" id="regAgency" name="regAgency" list="agencyList" placeholder="e.g. Jogmaya Engineering">
+      <div class="field-wrap">
+        <input type="text" id="regAgency" name="regAgency" placeholder="e.g. Jogmaya Engineering" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="regAgencySuggest">
+        <div id="regAgencySuggest" class="ix-panel"></div>
+      </div>
     </div>
     <div data-reg-field="material" class="hidden">
       <label for="regItem">Item code <span class="opt">(leave blank for all)</span></label>
-      <input type="text" id="regItem" name="regItem" list="itemList" placeholder="e.g. SM/01013">
+      <div class="field-wrap">
+        <input type="text" id="regItem" name="regItem" placeholder="e.g. SM/01013" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="regItemSuggest">
+        <div id="regItemSuggest" class="ix-panel"></div>
+      </div>
     </div>
     <datalist id="itemList"></datalist>
     <button type="button" class="primary" id="btnGenerateRegister">Generate register</button>
@@ -965,6 +982,7 @@ let STORE_NAME = localStorage.getItem(STORE_NAME_KEY) || 'Store Register';
 let OFFICE_NAME = localStorage.getItem(OFFICE_NAME_KEY) || 'Berhampore Division-I \u00B7 PHE';
 let META = { items: [], schemes: [] };
 let FOPTS = { agencies: [], workOrders: [], schemes: [] };
+let transactedItems = [];
 let currentType = 'Issue';
 let lineCounter = 0;
 const $ = id => document.getElementById(id);
@@ -1132,7 +1150,7 @@ $('btnSaveUrl').addEventListener('click', async ()=>{
     status.textContent = 'Connected. Item and scheme lists loaded.';
     toast('Connected to your sheet');
     loadDashboard();
-    prefetchWoIndex();
+    prefetchAllWoIndexes();
   }catch(err){
     $('syncDot').classList.add('off');
     status.textContent = 'Could not connect: ' + err.message;
@@ -1143,11 +1161,13 @@ $('btnRefreshMeta').addEventListener('click', async ()=>{
   status.textContent = 'Refreshing master data from your sheets...';
   try{
     await loadMeta(true);
-    status.textContent = 'Master data refreshed from your sheets.';
+    status.textContent = 'Refreshing work orders and dropdowns...';
     toast('Master data refreshed');
     updateMetaCacheStatus();
-    prefetchWoIndex();
-    loadTransactedItems(true);
+    await prefetchAllWoIndexes(true);
+    await loadFilterOptions(true);
+    await loadTransactedItems(true);
+    status.textContent = 'Master data and work orders refreshed.';
   }catch(err){
     status.textContent = 'Refresh failed: ' + err.message;
   }
@@ -1168,6 +1188,7 @@ async function loadMeta(force){
 }
 
 function paintItemList(items){
+  transactedItems = items.slice();
   $('itemList').innerHTML = items.slice()
     .sort((a,b)=>String(a.itemCode).localeCompare(String(b.itemCode)))
     .map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description||'')}</option>`).join('');
@@ -1193,7 +1214,7 @@ async function loadFilterOptions(force){
   const c = force ? null : cacheRead(CACHE_FOPTS_KEY, CACHE_FOPTS_TTL);
   if(c){
     FOPTS = (c.data && Array.isArray(c.data.agencies)) ? c.data : FOPTS;
-    refreshRdDatalists();
+    refreshLeafPickers();
     if(!c.stale) return;
   }
   try{
@@ -1201,7 +1222,7 @@ async function loadFilterOptions(force){
     if(data && Array.isArray(data.agencies)){
       FOPTS = data;
       cacheWrite(CACHE_FOPTS_KEY, data);
-      refreshRdDatalists();
+      refreshLeafPickers();
     }
   }catch(e){ /* keep whatever we already have */ }
 }
@@ -1456,27 +1477,49 @@ function populateYearSelect(){
 let woSearchTimer = null;
 let woSeq = 0;
 let woIndex = null;
+let woIndexAll = {};
 
 function woIndexKey(year){ return CACHE_WO_KEY + year; }
 
 async function prefetchWoIndex(){
   const year = $('woYear').value;
   if(!year) return;
-  if(woIndex && woIndex.year === year && !woIndex.stale){ refreshRdDatalists(); return; }
+  if(woIndex && woIndex.year === year && !woIndex.stale){ refreshLeafPickers(); return; }
   const c = cacheRead(woIndexKey(year), CACHE_WO_TTL);
   if(c){
     woIndex = { year, rows: c.data, stale: c.stale };
-    refreshRdDatalists();
+    woIndexAll[year] = c.data;
+    refreshLeafPickers();
     if(!c.stale) return;
   }
   try{
     const data = await apiGet('workOrderIndex', { year });
     if(data.rows){
       woIndex = { year, rows: data.rows, stale: false };
+      woIndexAll[year] = data.rows;
       cacheWrite(woIndexKey(year), data.rows);
-      refreshRdDatalists();
+      refreshLeafPickers();
     }
   }catch(e){ /* keep whatever we have */ }
+}
+
+/* Download the work-order index for EVERY known year (plus the current one) so
+ * the work-order dropdown and the year-switching finder are fully seeded. */
+async function prefetchAllWoIndexes(force){
+  const years = new Set(META.workOrderYears || []);
+  years.add(String(clientYear($('fDate').value)));
+  await Promise.all(Array.from(years).map(async year=>{
+    const c = force ? null : cacheRead(woIndexKey(year), CACHE_WO_TTL);
+    if(c){ woIndexAll[year] = c.data; return; }
+    try{
+      const data = await apiGet('workOrderIndex', force ? { year, refresh:'1' } : { year });
+      if(data.rows){
+        woIndexAll[year] = data.rows;
+        cacheWrite(woIndexKey(year), data.rows);
+      }
+    }catch(e){ /* keep whatever we have */ }
+  }));
+  refreshLeafPickers();
 }
 
 /* ---------------- Movement report dropdowns (transaction-derived, self-learning from results) ---------------- */
@@ -1494,24 +1537,30 @@ function mergeRdLearned(key, newValues){
   });
   if(changed) cacheWrite(key, Array.from(set));
 }
-function paintDatalist(id, values){
-  const el = $(id);
-  if(!el) return;
-  el.innerHTML = Array.from(new Set(values.filter(Boolean)))
-    .sort((a,b)=>a.localeCompare(b))
-    .map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+function leafAgencies(){
+  return Array.from(new Set(FOPTS.agencies.concat(loadRdLearned(CACHE_RD_AGENCY_KEY)).filter(Boolean)))
+    .sort((a,b)=>a.localeCompare(b));
 }
-function paintSchemeList(){
-  const el = $('schemeList');
-  if(!el) return;
-  el.innerHTML = FOPTS.schemes.slice()
-    .sort((a,b)=>String(a.schemeCode).localeCompare(String(b.schemeCode)))
-    .map(s=>`<option value="${escapeHtml(s.schemeCode)}">${escapeHtml(s.schemeName||'')}</option>`).join('');
+function leafWorkOrders(){
+  const all = new Set();
+  Object.keys(woIndexAll).forEach(year=>{
+    (woIndexAll[year] || []).forEach(r=>{
+      const w = String(r.WorkOrderNo || '').trim();
+      if(w) all.add(w);
+    });
+  });
+  FOPTS.workOrders.concat(loadRdLearned(CACHE_RD_WO_KEY)).forEach(w=>{
+    w = String(w || '').trim();
+    if(w) all.add(w);
+  });
+  return Array.from(all).sort((a,b)=>a.localeCompare(b));
 }
-function refreshRdDatalists(){
-  paintDatalist('agencyList', FOPTS.agencies.concat(loadRdLearned(CACHE_RD_AGENCY_KEY)));
-  paintDatalist('workOrderList', FOPTS.workOrders.concat(loadRdLearned(CACHE_RD_WO_KEY)));
-  paintSchemeList();
+function leafSchemes(){
+  return FOPTS.schemes.slice()
+    .sort((a,b)=>String(a.schemeCode).localeCompare(String(b.schemeCode)));
+}
+function refreshLeafPickers(){
+  leafPickers.forEach(p=>{ if(p.isOpen()) p.refresh(); });
 }
 
 function filterWoRows(rows, q){
@@ -1560,8 +1609,9 @@ async function revalidateWoIndex(year, seq){
     if(seq !== woSeq) return;
     if(data.rows){
       woIndex = { year, rows: data.rows, stale: false };
+      woIndexAll[year] = data.rows;
       cacheWrite(woIndexKey(year), data.rows);
-      refreshRdDatalists();
+      refreshLeafPickers();
       if($('woYear').value === year && $('woSearch').value.trim()) runWoSearch();
     }
   }catch(e){}
@@ -1581,6 +1631,7 @@ $('btnSyncWo').addEventListener('click', async ()=>{
     const data = await apiGet('workOrderIndex', { year, refresh:'1' });
     if(data.rows){
       woIndex = { year, rows: data.rows, stale: false };
+      woIndexAll[year] = data.rows;
       cacheWrite(woIndexKey(year), data.rows);
       toast('Work orders refreshed for ' + year);
       runWoSearch();
@@ -1605,6 +1656,7 @@ async function runWoSearch(){
     if(c) idx = { year, rows: c.data, stale: c.stale };
   }
   if(idx && idx.rows){
+    woIndexAll[year] = idx.rows;
     if(idx.stale) revalidateWoIndex(year, seq);
     paintWoResults(results, filterWoRows(idx.rows, q).slice(0, SUGGEST_MAX), q, year, seq);
     return;
@@ -1620,6 +1672,7 @@ async function runWoSearch(){
       return;
     }
     woIndex = { year, rows: data.rows, stale: false };
+    woIndexAll[year] = data.rows;
     cacheWrite(woIndexKey(year), data.rows);
     paintWoResults(results, filterWoRows(data.rows, q).slice(0, SUGGEST_MAX), q, year, seq);
   }catch(err){
@@ -1697,17 +1750,36 @@ function bindIndexLeaf(input, panel, cfg){
     panel.innerHTML = '';
     const q = input.value.trim().toLowerCase();
     const list = cfg.list();
-    if(!q || !list.length){ close(); return; }
-    const matches = list
-      .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
-      .slice(0, SUGGEST_MAX);
-    panel.innerHTML = matches.length
-      ? ixHead(cfg.title, matches.length) + matches.map(s=>`
-        <div class="ix-row" data-code="${escapeHtml(cfg.codeOf(s))}">
-          <span class="ix-code">${escapeHtml(cfg.codeOf(s))}</span>
-          <span class="ix-name">${escapeHtml(cfg.nameOf(s)||'')}</span>
-        </div>`).join('')
-      : ixHead(cfg.title) + `<div class="ix-empty">No ${cfg.kind} match “${escapeHtml(input.value.trim())}”. Check the code or leave it blank.</div>`;
+    if(!list.length){
+      panel.innerHTML = ixHead(cfg.title) + (cfg.emptyMsg
+        ? `<div class="ix-empty">${escapeHtml(cfg.emptyMsg)}</div>`
+        : `<div class="ix-empty">Nothing to choose from yet.</div>`);
+      open(true);
+      return;
+    }
+    let matches;
+    if(q){
+      matches = list
+        .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
+        .slice(0, SUGGEST_MAX);
+    } else if(cfg.openOnEmpty){
+      matches = list.slice(0, SUGGEST_MAX);
+    } else {
+      close(); return;
+    }
+    panel.innerHTML =
+      (cfg.anyLabel ? `
+        <div class="ix-row ix-any${q ? '' : ' active'}" data-code="">
+          <span class="ix-code">—</span>
+          <span class="ix-name">${escapeHtml(cfg.anyLabel)}</span>
+        </div>` : '') +
+      (matches.length
+        ? ixHead(cfg.title, matches.length) + matches.map(s=>`
+          <div class="ix-row" data-code="${escapeHtml(cfg.codeOf(s))}">
+            <span class="ix-code">${escapeHtml(cfg.codeOf(s))}</span>
+            <span class="ix-name">${escapeHtml(cfg.nameOf(s)||'')}</span>
+          </div>`).join('')
+        : ixHead(cfg.title) + `<div class="ix-empty">No ${cfg.kind} match “${escapeHtml(input.value.trim())}”. Check the code or leave it blank.</div>`);
     open(true);
   };
   const select = row => { cfg.onSelect(row.dataset.code); close(); };
@@ -1733,12 +1805,13 @@ function bindIndexLeaf(input, panel, cfg){
     rows[idx].classList.add('active');
     revealRow(panel, rows[idx]);
   });
-  return { close };
+  return { close, refresh: render, isOpen: () => panel.classList.contains('open') };
 }
 
 const schemePicker = bindIndexLeaf(fSchemeCode, schemeSuggest, {
   title: 'Scheme index', kind: 'schemes',
   list: ()=>META.schemes,
+  emptyMsg: 'Connect to your sheet to load the scheme list.',
   codeOf: s=>s.schemeCode,
   nameOf: s=>s.schemeName,
   onInput(){
@@ -1751,6 +1824,46 @@ const schemePicker = bindIndexLeaf(fSchemeCode, schemeSuggest, {
     fSchemeName.value = match ? match.schemeName : '';
   }
 });
+
+/* Filter leaves — report/register dropdowns. Always open on focus (even with an
+ * empty source list, showing the emptyMsg hint) and keep a leading "Any …" row so
+ * the field still accepts free text (part of a name / code is fine). */
+const leafPickers = [];
+leafPickers.push(bindIndexLeaf($('rdAgency'), $('rdAgencySuggest'), {
+  title: 'Agency index', kind: 'agencies', openOnEmpty: true, anyLabel: 'Any agency',
+  list: leafAgencies,
+  emptyMsg: 'No agencies in the register yet. Add a transaction or run a movement report first.',
+  codeOf: s=>s, nameOf: s=>s,
+  onSelect(code){ $('rdAgency').value = code; }
+}));
+leafPickers.push(bindIndexLeaf($('rdWorkOrder'), $('rdWorkOrderSuggest'), {
+  title: 'Work order index', kind: 'work orders', openOnEmpty: true, anyLabel: 'Any work order',
+  list: leafWorkOrders,
+  emptyMsg: 'No work orders yet — refresh master data, or add a transaction first.',
+  codeOf: s=>s, nameOf: s=>s,
+  onSelect(code){ $('rdWorkOrder').value = code; }
+}));
+leafPickers.push(bindIndexLeaf($('rdScheme'), $('rdSchemeSuggest'), {
+  title: 'Scheme index', kind: 'schemes', openOnEmpty: true, anyLabel: 'Any scheme',
+  list: leafSchemes,
+  emptyMsg: 'No schemes yet. Add a transaction first.',
+  codeOf: s=>s.schemeCode, nameOf: s=>s.schemeName,
+  onSelect(code){ $('rdScheme').value = code; }
+}));
+leafPickers.push(bindIndexLeaf($('regAgency'), $('regAgencySuggest'), {
+  title: 'Agency index', kind: 'agencies', openOnEmpty: true, anyLabel: 'Any agency',
+  list: leafAgencies,
+  emptyMsg: 'No agencies in the register yet. Add a transaction or run a movement report first.',
+  codeOf: s=>s, nameOf: s=>s,
+  onSelect(code){ $('regAgency').value = code; }
+}));
+leafPickers.push(bindIndexLeaf($('regItem'), $('regItemSuggest'), {
+  title: 'Item index', kind: 'items', openOnEmpty: true, anyLabel: 'Any item',
+  list: ()=>transactedItems.slice().sort((a,b)=>String(a.itemCode).localeCompare(String(b.itemCode))),
+  emptyMsg: 'No materials yet. Add a transaction first.',
+  codeOf: i=>i.itemCode, nameOf: i=>i.description,
+  onSelect(code){ $('regItem').value = code; }
+}));
 
 function setType(t){
   currentType = t;
@@ -2117,7 +2230,7 @@ $('btnRdRun').addEventListener('click', async ()=>{
     lastRdRows = data.rows || [];
     mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>r.AgencyDetails));
     mergeRdLearned(CACHE_RD_WO_KEY, lastRdRows.map(r=>r.WorkOrderDetails));
-    refreshRdDatalists();
+    refreshLeafPickers();
     const wrap = $('rdResults');
     wrap.classList.remove('hidden');
     $('btnRdExport').classList.toggle('hidden', !lastRdRows.length);
@@ -2171,16 +2284,16 @@ applyStoreName();
 loadMetaFromCache();
 populateYearSelect();
 updateMetaCacheStatus();
-refreshRdDatalists();
 loadTransactedItems();
 loadFilterOptions();
 if(SCRIPT_URL){
+  prefetchAllWoIndexes();
   loadMeta().then(()=>{
     $('syncDot').classList.remove('off');
     updateMetaCacheStatus();
     loadDashboard();
+    prefetchAllWoIndexes();
   }).catch(()=>{});
-  prefetchWoIndex();
 }
 </script>
 </body>

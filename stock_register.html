@@ -156,6 +156,51 @@ button.ghost:hover{border-color:var(--ink);}
 .empty-state{text-align:center; padding:36px 12px; color:var(--ink-mut); font-size:13.5px;}
 .empty-state .sig{font-family:var(--stamp); font-size:28px; color:var(--rule-strong); margin-bottom:8px;}
 
+/* ---- Index-leaf autocomplete (shared with the app) ---- */
+.field-wrap{position:relative;}
+.ix-panel{
+  position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:12;
+  background:#FBF6E8; border:1px solid #E2D9BC; border-radius:2px;
+  box-shadow:0 12px 24px -12px rgba(8,13,26,.4);
+  max-height:252px; overflow-y:auto;
+  display:none;
+}
+.ix-panel.open{display:block;}
+.ix-head{
+  position:sticky; top:0; z-index:1;
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:9px 10px 8px; border-bottom:1.5px solid var(--rule-strong);
+  background:#FBF6E8;
+}
+.ix-head .ix-title{font-family:var(--stamp); font-size:12px; color:var(--margin); letter-spacing:.04em;}
+.ix-head .ix-count{font-family:var(--stamp); font-size:11px; color:var(--ink-mut);}
+.ix-row{
+  position:relative; display:flex; align-items:center; gap:8px;
+  padding:9px 10px; border-bottom:1px solid var(--rule); cursor:pointer;
+}
+.ix-row::before{
+  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
+  background:var(--margin); opacity:0; transition:opacity .12s ease;
+}
+.ix-row:last-child{border-bottom:none;}
+.ix-row:hover, .ix-row.active{background:#FFFDF5;}
+.ix-row:hover::before, .ix-row.active::before{opacity:1;}
+.ix-row .ix-code{
+  flex-shrink:0; min-width:92px;
+  font-family:var(--stamp); font-size:12px; color:var(--margin);
+}
+.ix-row .ix-name{
+  flex:1; min-width:0;
+  font-size:12.5px; line-height:1.45; color:var(--ink);
+  overflow-wrap:break-word;
+}
+.ix-empty{padding:12px 10px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
+.ix-row.ix-any{opacity:.72;}
+.ix-row.ix-any .ix-code{color:#C9BF9E;}
+.ix-row.ix-any:hover, .ix-row.ix-any.active{opacity:1;}
+.ix-row.ix-any .ix-name{color:var(--ink-mut);}
+.ix-row.ix-any.active .ix-name, .ix-row.ix-any:hover .ix-name{color:var(--ink);}
+
 @media print{
   body{background:#fff!important;}
   .card{display:none!important;}
@@ -200,7 +245,7 @@ button.ghost:hover{border-color:var(--ink);}
     <div class="filter-grid">
       <div><label for="from">From</label><input type="date" id="from"></div>
       <div><label for="to">To</label><input type="date" id="to"></div>
-      <div><label for="item">Item code</label><input type="text" id="item" list="items" placeholder="All materials"><datalist id="items"></datalist></div>
+      <div class="field-wrap"><label for="item">Item code</label><input type="text" id="item" placeholder="All materials" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="itemSuggest"><div id="itemSuggest" class="ix-panel"></div></div>
     </div>
 
     <div class="actions">
@@ -216,6 +261,7 @@ button.ghost:hover{border-color:var(--ink);}
 const $ = id => document.getElementById(id);
 let currentView = 'agency';
 let SCRIPT_URL = '';
+let mirrorItems = [];
 try{ SCRIPT_URL = localStorage.getItem('bdi_store_script_url') || ''; }catch(e){}
 function storeName(){ try{ return localStorage.getItem('bdi_store_name') || 'Store Register'; }catch(e){ return 'Store Register'; } }
 function officeName(){ try{ return localStorage.getItem('bdi_office_name') || 'Berhampore Division-I \u00B7 PHE'; }catch(e){ return 'Berhampore Division-I \u00B7 PHE'; } }
@@ -246,10 +292,95 @@ async function loadItems(){
   if(!SCRIPT_URL) return;
   try{
     const m = await apiGet('stockRegister');
-    const items = (m.items || []).map(i=>({ itemCode: i.itemCode, description: i.description }));
-    $('items').innerHTML = items.map(i=>`<option value="${escapeHtml(i.itemCode)}">${escapeHtml(i.description)}</option>`).join('');
+    mirrorItems = (m.items || []).map(i=>({ itemCode: i.itemCode, description: i.description }));
   }catch(e){}
 }
+
+const SUGGEST_MAX = 30;
+const IX_CLOSE_DELAY_MS = 120;
+const ixHead = (title, count) => `<div class="ix-head">
+  <span class="ix-title">${title}</span>
+  ${count ? `<span class="ix-count">${count} ${count===1?'match':'matches'}</span>` : ''}
+</div>`;
+function revealRow(panel, row){
+  if(row.offsetTop < panel.scrollTop) panel.scrollTop = row.offsetTop;
+  else if(row.offsetTop + row.offsetHeight > panel.scrollTop + panel.clientHeight)
+    panel.scrollTop = row.offsetTop + row.offsetHeight - panel.clientHeight;
+}
+function bindIndexLeaf(input, panel, cfg){
+  const open = on => {
+    panel.classList.toggle('open', on);
+    input.setAttribute('aria-expanded', on ? 'true' : 'false');
+  };
+  const close = () => open(false);
+  const render = () => {
+    panel.innerHTML = '';
+    const q = input.value.trim().toLowerCase();
+    const list = cfg.list();
+    if(!list.length){
+      panel.innerHTML = ixHead(cfg.title) + (cfg.emptyMsg
+        ? `<div class="ix-empty">${escapeHtml(cfg.emptyMsg)}</div>`
+        : `<div class="ix-empty">Nothing to choose from yet.</div>`);
+      open(true);
+      return;
+    }
+    let matches;
+    if(q){
+      matches = list
+        .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
+        .slice(0, SUGGEST_MAX);
+    } else if(cfg.openOnEmpty){
+      matches = list.slice(0, SUGGEST_MAX);
+    } else {
+      close(); return;
+    }
+    panel.innerHTML =
+      (cfg.anyLabel ? `
+        <div class="ix-row ix-any${q ? '' : ' active'}" data-code="">
+          <span class="ix-code">—</span>
+          <span class="ix-name">${escapeHtml(cfg.anyLabel)}</span>
+        </div>` : '') +
+      (matches.length
+        ? ixHead(cfg.title, matches.length) + matches.map(s=>`
+          <div class="ix-row" data-code="${escapeHtml(cfg.codeOf(s))}">
+            <span class="ix-code">${escapeHtml(cfg.codeOf(s))}</span>
+            <span class="ix-name">${escapeHtml(cfg.nameOf(s)||'')}</span>
+          </div>`).join('')
+        : ixHead(cfg.title) + `<div class="ix-empty">No ${cfg.kind} match “${escapeHtml(input.value.trim())}”. Check the code or leave it blank.</div>`);
+    open(true);
+  };
+  const select = row => { cfg.onSelect(row.dataset.code); close(); };
+  input.addEventListener('input', ()=>{ if(cfg.onInput) cfg.onInput(); render(); });
+  input.addEventListener('focus', render);
+  input.addEventListener('blur', ()=>setTimeout(close, IX_CLOSE_DELAY_MS));
+  panel.addEventListener('mousedown', (e)=>e.preventDefault());
+  panel.addEventListener('click', (e)=>{
+    const row = e.target.closest('.ix-row');
+    if(row) select(row);
+  });
+  input.addEventListener('keydown', (e)=>{
+    if(!panel.classList.contains('open')) return;
+    const rows = Array.from(panel.querySelectorAll('.ix-row'));
+    if(!rows.length) return;
+    let idx = rows.indexOf(panel.querySelector('.ix-row.active'));
+    if(e.key==='ArrowDown'){ e.preventDefault(); idx = (idx+1) % rows.length; }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); idx = (idx-1+rows.length) % rows.length; }
+    else if(e.key==='Enter' && idx > -1){ e.preventDefault(); select(rows[idx]); return; }
+    else if(e.key==='Escape'){ e.preventDefault(); close(); return; }
+    else return;
+    rows.forEach(r=>r.classList.remove('active'));
+    rows[idx].classList.add('active');
+    revealRow(panel, rows[idx]);
+  });
+  return { close, refresh: render, isOpen: () => panel.classList.contains('open') };
+}
+bindIndexLeaf($('item'), $('itemSuggest'), {
+  title: 'Item index', kind: 'items', openOnEmpty: true, anyLabel: 'Any item',
+  list: ()=>mirrorItems.slice().sort((a,b)=>String(a.itemCode).localeCompare(String(b.itemCode))),
+  emptyMsg: 'No materials yet. Add a transaction first.',
+  codeOf: i=>i.itemCode, nameOf: i=>i.description,
+  onSelect(code){ $('item').value = code; }
+});
 
 function regNum(n){
   if(n==null || n==='' || isNaN(Number(n))) return '';
