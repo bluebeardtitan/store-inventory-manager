@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2032%2032%22%3E%3Crect%20width=%2232%22%20height=%2232%22%20fill=%22%23202A3A%22/%3E%3Crect%20x=%226%22%20y=%225%22%20width=%2220%22%20height=%2222%22%20rx=%221.5%22%20fill=%22%23F8F3E4%22/%3E%3Crect%20x=%229%22%20y=%228%22%20width=%2214%22%20height=%222%22%20fill=%22%23B23A2A%22/%3E%3Crect%20x=%229%22%20y=%2212%22%20width=%2214%22%20height=%221.5%22%20fill=%22%23A9B3C6%22/%3E%3Crect%20x=%229%22%20y=%2215%22%20width=%2210%22%20height=%221.5%22%20fill=%22%23A9B3C6%22/%3E%3C/svg%3E">
 <title>Store Register</title>
-<script async src="https://accounts.google.com/gsi/client"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
 <style>
@@ -1134,7 +1133,8 @@ let txnSheetsCache = [];    // discovered Transactions / Transactions_<year> tab
 
 const GOOGLE_API = {
   sheets: 'https://sheets.googleapis.com/v4/spreadsheets',
-  drive: 'https://www.googleapis.com/drive/v3'
+  drive: 'https://www.googleapis.com/drive/v3',
+  upload: 'https://www.googleapis.com/upload/drive/v3'
 };
 
 function b64Decode(b64){
@@ -1149,46 +1149,105 @@ function isConnected(){
   return !!(accessToken && storeConfig && storeConfig.spreadsheetId);
 }
 const TOKEN_FRESH_MARGIN_MS = 30e3; // re-auth 30s before a token actually expires
+const TOKEN_STORAGE_KEY = 'bdi_google_access_token';
+const TOKEN_EXPIRY_KEY = 'bdi_google_token_expiry';
+const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+const REVOKE_ENDPOINT = 'https://oauth2.googleapis.com/revoke';
+let suppressSilentAuthUntil = 0; // avoids reload loops after a silent re-auth bounces
+
 function hasFreshToken(){
   return !!accessToken && Date.now() < tokenExpiresAt - TOKEN_FRESH_MARGIN_MS;
 }
-function gisReady(){
-  if(window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
-  return new Promise(res=>{
-    const t = setInterval(()=>{
-      if(window.google && window.google.accounts && window.google.accounts.oauth2){ clearInterval(t); res(); }
-    }, 50);
-  });
+
+function getAuthRedirectUri(){
+  return window.location.origin + window.location.pathname;
 }
 
-/* Popup / silent token request through Google Identity Services. */
-function requestToken(interactive){
-  return new Promise((resolve, reject)=>{
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: OAUTH_SCOPE,
-      callback: resp=>{
-        if(resp.error){ reject(new Error(resp.error_description || resp.error)); return; }
-        accessToken = resp.access_token;
-        tokenExpiresAt = Date.now() + (Number(resp.expires_in || 3600) * 1000);
-        resolve(accessToken);
-      }
-    });
-    try{
-      tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
-    }catch(err){ reject(err); }
+/* Standard OAuth redirect (implicit) flow — the same accounts.google.com page
+ * the Scheme Database app uses, instead of the GIS popup (which is where the
+ * "this app isn't verified" interstitial shows). The page navigates away and
+ * comes back with #access_token=..., which extractTokenFromHash() picks up on
+ * the next boot. */
+function oauthRedirect(prompt){
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: getAuthRedirectUri(),
+    response_type: 'token',
+    scope: OAUTH_SCOPE,
+    include_granted_scopes: 'true',
+    prompt: prompt || 'consent'
   });
+  window.location.href = AUTH_ENDPOINT + '?' + params.toString();
 }
-async function ensureToken(){
-  if(hasFreshToken()) return;
-  await gisReady();
-  await requestToken(false);
+
+function setToken(token, expiresIn){
+  accessToken = token;
+  tokenExpiresAt = Date.now() + (Number(expiresIn || 3600) * 1000);
+  try{
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(TOKEN_EXPIRY_KEY, String(tokenExpiresAt));
+  }catch(e){}
 }
-async function authInteractively(){
-  await gisReady();
-  await requestToken(true);
-  await fetchProfile();
-  return authProfile;
+
+/* Boot-time consumer of the #access_token Google drops back after a redirect.
+ * Returns true when a usable token arrived. */
+function extractTokenFromHash(){
+  const hash = window.location.hash;
+  if(!hash || hash.length < 2) return false;
+  const p = new URLSearchParams(hash.substring(1));
+  const token = p.get('access_token');
+  if(token){
+    setToken(token, p.get('expires_in'));
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    return true;
+  }
+  if(p.get('error')){
+    // A silent (prompt=none) attempt bounced (revoked access / dead session /
+    // mismatched redirect) — stop auto-redirecting so the page doesn't loop.
+    suppressSilentAuthUntil = Date.now() + 5*60e3;
+    try{ localStorage.removeItem(TOKEN_STORAGE_KEY); localStorage.removeItem(TOKEN_EXPIRY_KEY); }catch(e){}
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+  return false;
+}
+
+/* Restores the saved token without any Google round-trip. */
+function loadTokenFromStorage(){
+  try{
+    const t = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const exp = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0', 10);
+    if(t && exp > Date.now() + TOKEN_FRESH_MARGIN_MS){
+      accessToken = t;
+      tokenExpiresAt = exp;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+function tokenAvailable(){
+  return hasFreshToken() || loadTokenFromStorage();
+}
+
+/* Non-interactive token guarantee used by apiGet/apiPost/gFetch: a fresh token
+ * from memory or storage, or a prompt=none redirect that bounces straight back
+ * with a fresh token, or a rejection when silent auth is on hold. */
+function ensureToken(){
+  if(hasFreshToken()) return Promise.resolve();
+  if(loadTokenFromStorage()) return Promise.resolve();
+  if(Date.now() < suppressSilentAuthUntil){
+    return Promise.reject(new Error('Google session expired. Sign in with Google from Settings.'));
+  }
+  oauthRedirect('none');
+  return new Promise(()=>{}); // page is navigating away; never settles here
+}
+
+/* Interactive sign-in: full-page redirect. Never settles — on return the page
+ * reloads and extractTokenFromHash() + the boot connect path take over. */
+function authInteractively(){
+  suppressSilentAuthUntil = 0;
+  oauthRedirect('consent');
+  return new Promise(()=>{});
 }
 async function fetchProfile(){
   if(!accessToken) return null;
@@ -1202,12 +1261,17 @@ async function fetchProfile(){
   return authProfile;
 }
 function signOut(){
-  if(accessToken && window.google && window.google.accounts){
-    try{ window.google.accounts.oauth2.revoke(accessToken, ()=>{}); }catch(e){}
+  if(accessToken){
+    try{ fetch(REVOKE_ENDPOINT + '?token=' + encodeURIComponent(accessToken), { method:'POST' }); }catch(e){}
   }
   accessToken = null;
   tokenExpiresAt = 0;
   authProfile = null;
+  suppressSilentAuthUntil = Date.now() + 60e3;
+  try{
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  }catch(e){}
 }
 
 /* Low-level Google API call: in-flight cap, timeout, silent refresh on 401. */
@@ -1219,7 +1283,7 @@ async function gFetch(base, path, opts={}){
     let headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
     let res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
     if(res.status === 401){
-      await requestToken(false);
+      await ensureToken();
       headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
       res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
     }
@@ -1277,7 +1341,7 @@ async function readConfigFile(fileId){
   return JSON.parse(txt);
 }
 async function writeConfigFile(fileId, cfg){
-  await gFetch(GOOGLE_API.drive, '/files/' + encodeURIComponent(fileId) + '?uploadType=media', {
+  await gFetch(GOOGLE_API.upload, '/files/' + encodeURIComponent(fileId) + '?uploadType=media', {
     method:'PATCH',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(cfg)
@@ -1291,7 +1355,7 @@ async function createConfigFile(folderId, name, cfg){
     '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n' +
     '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + data + '\r\n' +
     '--' + boundary + '--';
-  return driveApi('/files?uploadType=multipart', {
+  return gFetchJson(GOOGLE_API.upload, '/files?uploadType=multipart', {
     method:'POST',
     headers:{ 'Content-Type':'multipart/related; boundary=' + boundary },
     body
@@ -1800,6 +1864,56 @@ async function tryAutoConnect(){
   }catch(e){ return false; }
 }
 
+/* Resumes a "Save & connect" that had to bounce through the Google redirect:
+ * re-fills the settings form from sessionStorage and runs the same connect. */
+async function resumePendingConnect(){
+  let pending = false;
+  try{ pending = sessionStorage.getItem('bdi_pending_connect') === '1'; }catch(e){}
+  if(!pending) return false;
+  try{ sessionStorage.removeItem('bdi_pending_connect'); }catch(e){}
+  let fields = {};
+  try{ fields = JSON.parse(sessionStorage.getItem('bdi_pending_connect_fields') || '{}'); sessionStorage.removeItem('bdi_pending_connect_fields'); }catch(e){}
+  if(!tokenAvailable()) return false;
+  $('storeName').value = fields.storeName || '';
+  $('officeName').value = fields.officeName || '';
+  $('storeCode').value = fields.storeCode || '';
+  $('storeSpreadsheet').value = fields.storeSpreadsheet || '';
+  $('storeMaster').value = fields.storeMaster || '';
+  $('storeWorkOrderMaster').value = fields.storeWorkOrderMaster || '';
+  return runStatusTask('storeStatus', 'Saving config and connecting...', connectStoreFromSettings, {
+    done: () => 'Connected to ' + (storeConfig.storeName || 'your store') + '.',
+    fail: 'Could not connect'
+  }).then(ok=>{ if(ok) toast('Store connected'); return ok; });
+}
+
+/* Signed in but no saved store config yet: auto-pick when there is exactly one
+ * config file, or tell the user to pick one when several exist. */
+async function maybeAutoPickConfig(){
+  if(!accessToken || storeConfig) return;
+  try{
+    const { files } = await listStoreConfigs();
+    if(files.length === 1){
+      storeConfigFile = { id: files[0].id, name: files[0].name };
+      localStorage.setItem(CONFIG_FILE_ID_KEY, files[0].id);
+      localStorage.setItem(CONFIG_FILE_NAME_KEY, files[0].name);
+      const cfg = await readConfigFile(files[0].id);
+      storeConfig = cfg;
+      cacheWrite(CONFIG_CACHE_KEY, cfg);
+      syncNamesFromConfig();
+      fillSettingsFromConfig();
+      await ensureStore();
+      $('syncDot').classList.remove('off');
+      $('storeStatus').textContent = 'Connected to ' + (cfg.storeName || 'your store') + '.';
+      toast('Store connected');
+      loadMeta();
+      prefetchAllWoIndexes();
+      loadDashboard();
+    }else if(files.length > 1){
+      $('storeStatus').textContent = 'Found ' + files.length + ' store config files under MAK-Projects/Store-Manager/. Pick one below and press "Save & connect".';
+    }
+  }catch(e){}
+}
+
 /* ---------------- Backups ---------------- */
 
 const B64_CHUNK = 0x8000; // bytes per chunk when converting a binary array to base64
@@ -1861,7 +1975,7 @@ async function pushTransactionsToDrive(){
     '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n' +
     '--' + boundary + '\r\nContent-Type: ' + XLSX_MIME + '\r\n\r\n' + bin + '\r\n' +
     '--' + boundary + '--';
-  const created = await driveApi('/files?uploadType=multipart', {
+  const created = await gFetchJson(GOOGLE_API.upload, '/files?uploadType=multipart', {
     method:'POST',
     headers:{ 'Content-Type':'multipart/related; boundary=' + boundary },
     body
@@ -1901,34 +2015,8 @@ async function runStatusTask(id, busyMsg, task, opts){
     return false;
   }
 }
-$('btnSignIn').addEventListener('click', async ()=>{
-  try{
-    const profile = await authInteractively();
-    setAuthUi();
-    if(profile && profile.email) toast('Signed in as ' + profile.email);
-    const { files } = await listStoreConfigs();
-    if(files.length === 1){
-      storeConfigFile = { id: files[0].id, name: files[0].name };
-      localStorage.setItem(CONFIG_FILE_ID_KEY, files[0].id);
-      localStorage.setItem(CONFIG_FILE_NAME_KEY, files[0].name);
-      const cfg = await readConfigFile(files[0].id);
-      storeConfig = cfg;
-      cacheWrite(CONFIG_CACHE_KEY, cfg);
-      syncNamesFromConfig();
-      fillSettingsFromConfig();
-      await ensureStore();
-      $('syncDot').classList.remove('off');
-      $('storeStatus').textContent = 'Connected to ' + (cfg.storeName || 'your store') + '.';
-      toast('Store connected');
-      loadMeta();
-      prefetchAllWoIndexes();
-      loadDashboard();
-    }else if(files.length > 1){
-      $('storeStatus').textContent = 'Found ' + files.length + ' store config files under MAK-Projects/Store-Manager/. Pick one below and press "Save & connect".';
-    }
-  }catch(err){
-    $('storeStatus').textContent = 'Sign-in / connect failed: ' + err.message;
-  }
+$('btnSignIn').addEventListener('click', ()=>{
+  authInteractively();
 });
 $('btnSignOut').addEventListener('click', ()=>{
   signOut();
@@ -1939,29 +2027,40 @@ $('btnSignOut').addEventListener('click', ()=>{
   $('syncDot').classList.add('off');
   toast('Signed out');
 });
-$('btnSaveStore').addEventListener('click', async ()=>{
-  const ok = await runStatusTask('storeStatus', 'Saving config and connecting...', async ()=>{
-    if(!accessToken){
-      const profile = await authInteractively();
-      setAuthUi();
-      if(!profile) throw new Error('Google sign-in cancelled or failed.');
-    }
-    await connectStoreFromSettings();
-  }, {
+$('btnSaveStore').addEventListener('click', ()=>{
+  if(!tokenAvailable()){
+    /* Full-page Google redirect ahead — stash the settings so the connect can
+     * resume on the way back (boot re-fills the form and saves). */
+    try{
+      sessionStorage.setItem('bdi_pending_connect', '1');
+      sessionStorage.setItem('bdi_pending_connect_fields', JSON.stringify({
+        storeName: $('storeName').value,
+        officeName: $('officeName').value,
+        storeCode: $('storeCode').value,
+        storeSpreadsheet: $('storeSpreadsheet').value,
+        storeMaster: $('storeMaster').value,
+        storeWorkOrderMaster: $('storeWorkOrderMaster').value
+      }));
+    }catch(e){}
+    authInteractively();
+    return;
+  }
+  runStatusTask('storeStatus', 'Saving config and connecting...', connectStoreFromSettings, {
     done: () => 'Connected to ' + (storeConfig.storeName || 'your store') + '.',
     fail: 'Could not connect'
+  }).then(ok=>{
+    if(ok){
+      $('syncDot').classList.remove('off');
+      setAuthUi();
+      toast('Store connected');
+      updateMetaCacheStatus();
+      loadMeta();
+      prefetchAllWoIndexes();
+      loadFilterOptions();
+      loadTransactedItems();
+      loadDashboard();
+    }
   });
-  if(ok){
-    $('syncDot').classList.remove('off');
-    setAuthUi();
-    toast('Store connected');
-    updateMetaCacheStatus();
-    loadMeta();
-    prefetchAllWoIndexes();
-    loadFilterOptions();
-    loadTransactedItems();
-    loadDashboard();
-  }
 });
 $('btnRefreshMeta').addEventListener('click', async ()=>{
   await runStatusTask('storeStatus', 'Refreshing master data from your sheets...', async ()=>{
@@ -3167,18 +3266,26 @@ populateYearSelect();
 updateMetaCacheStatus();
 loadTransactedItems();
 loadFilterOptions();
-tryAutoConnect().then(ok=>{
-  if(ok){
-    $('syncDot').classList.remove('off');
-    setAuthUi();
-    updateMetaCacheStatus();
-    loadMeta();
-    prefetchAllWoIndexes();
-    loadFilterOptions();
-    loadTransactedItems();
-    loadDashboard();
-  }
-});
+extractTokenFromHash();
+tokenAvailable();
+if(hasFreshToken()){ fetchProfile().then(()=>setAuthUi()); }
+setAuthUi();
+resumePendingConnect()
+  .then(connected => connected ? true : tryAutoConnect())
+  .then(ok=>{
+    if(ok){
+      $('syncDot').classList.remove('off');
+      setAuthUi();
+      updateMetaCacheStatus();
+      loadMeta();
+      prefetchAllWoIndexes();
+      loadFilterOptions();
+      loadTransactedItems();
+      loadDashboard();
+    }else if(accessToken && !storeConfig){
+      return maybeAutoPickConfig();
+    }
+  });
 </script>
 </body>
 </html>

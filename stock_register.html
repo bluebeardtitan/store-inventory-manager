@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Material Stock Register — Standalone Report</title>
-<script async src="https://accounts.google.com/gsi/client"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
 <style>
@@ -316,39 +315,54 @@ function isConnected(){
 function hasFreshToken(){
   return !!accessToken && Date.now() < tokenExpiresAt - 30e3;
 }
-function gisReady(){
-  if(window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
-  return new Promise(res=>{
-    const t = setInterval(()=>{
-      if(window.google && window.google.accounts && window.google.accounts.oauth2){ clearInterval(t); res(); }
-    }, 50);
-  });
-}
-function requestToken(interactive){
-  return new Promise((resolve, reject)=>{
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: OAUTH_SCOPE,
-      callback: resp=>{
-        if(resp.error){ reject(new Error(resp.error_description || resp.error)); return; }
-        accessToken = resp.access_token;
-        tokenExpiresAt = Date.now() + (Number(resp.expires_in || 3600) * 1000);
-        resolve(accessToken);
-      }
-    });
+const TOKEN_STORAGE_KEY = 'bdi_google_access_token';
+const TOKEN_EXPIRY_KEY = 'bdi_google_token_expiry';
+
+/* Boot-time consumer of the #access_token Google drops back after a redirect
+ * (harmless when this page never redirects). */
+function extractTokenFromHash(){
+  const hash = window.location.hash;
+  if(!hash || hash.length < 2) return false;
+  const p = new URLSearchParams(hash.substring(1));
+  const token = p.get('access_token');
+  if(token){
+    accessToken = token;
+    tokenExpiresAt = Date.now() + (Number(p.get('expires_in') || 3600) * 1000);
     try{
-      tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
-    }catch(err){ reject(err); }
-  });
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, String(tokenExpiresAt));
+    }catch(e){}
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    return true;
+  }
+  return false;
 }
-async function ensureToken(){
-  if(hasFreshToken()) return;
-  await gisReady();
-  await requestToken(false);
+
+/* Restores the token the main store app saved. */
+function loadTokenFromStorage(){
+  try{
+    const t = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const exp = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0', 10);
+    if(t && exp > Date.now() + 30e3){
+      accessToken = t;
+      tokenExpiresAt = exp;
+      return true;
+    }
+  }catch(e){}
+  return false;
 }
-async function authInteractively(){
-  await gisReady();
-  await requestToken(true);
+
+/* This report never bounces to Google itself (its URL is not a registered OAuth
+ * redirect) — it reuses the token the main store app saves under the same
+ * localStorage keys. */
+function ensureToken(){
+  if(hasFreshToken()) return Promise.resolve();
+  if(loadTokenFromStorage()) return Promise.resolve();
+  return Promise.reject(new Error('Google session expired. Open the main store app to refresh the sign-in, then reload this report.'));
+}
+function authInteractively(){
+  if(loadTokenFromStorage()) return Promise.resolve();
+  return Promise.reject(new Error('Sign in with Google in the main store app first, then reload this report.'));
 }
 
 async function gFetch(base, path, opts={}){
@@ -359,7 +373,7 @@ async function gFetch(base, path, opts={}){
     let headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
     let res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
     if(res.status === 401){
-      await requestToken(false);
+      await ensureToken();
       headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
       res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
     }
@@ -884,6 +898,7 @@ $('generate').addEventListener('click', async ()=>{
 
 (async function(){
   $('status').textContent = 'Not connected. Click "Connect to your store" to sign in and read the store saved in the main app.';
+  extractTokenFromHash();
   await connectFlow(false);
 })();
 </script>
