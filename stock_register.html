@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Material Stock Register — Standalone Report</title>
+<script async src="https://accounts.google.com/gsi/client"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
 <style>
@@ -221,21 +222,17 @@ button.ghost:hover{border-color:var(--ink);}
   <div class="card">
     <div class="panel-head">
       <div>
-        <div class="reg-kicker">Berhampore Division-I · PHE — Store</div>
+        <div class="reg-kicker">Store register</div>
         <h1>Material stock register</h1>
       </div>
       <span class="badge">Standalone report</span>
     </div>
-    <p class="hint">Generates the ruled register report straight from the same Apps Script web app and Google Sheet as the main store app. Reads the script URL from this browser's storage.</p>
+    <p class="hint">Generates the ruled register report straight from the same Google Sheet as the main store app. Sign in with Google and this page reads the store saved by the main app — no Apps Script, no URL to paste.</p>
 
     <div class="cfg-row">
-      <div class="fld">
-        <label for="scriptUrl">Apps Script URL</label>
-        <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
-      </div>
-      <button type="button" class="ghost" id="btnSaveUrl">Save</button>
+      <button type="button" class="ghost" id="btnConnect">Connect to your store</button>
+      <span class="status" id="status"></span>
     </div>
-    <span class="status" id="status"></span>
 
     <div class="reg-scope" role="tablist" aria-label="Register grouping">
       <button type="button" class="reg-scope-btn active" data-reg-view="agency" role="tab" aria-selected="true">Agency wise</button>
@@ -260,11 +257,310 @@ button.ghost:hover{border-color:var(--ink);}
 <script>
 const $ = id => document.getElementById(id);
 let currentView = 'agency';
-let SCRIPT_URL = '';
 let mirrorItems = [];
-try{ SCRIPT_URL = localStorage.getItem('bdi_store_script_url') || ''; }catch(e){}
-function storeName(){ try{ return localStorage.getItem('bdi_store_name') || 'Store Register'; }catch(e){ return 'Store Register'; } }
-function officeName(){ try{ return localStorage.getItem('bdi_office_name') || 'Berhampore Division-I \u00B7 PHE'; }catch(e){ return 'Berhampore Division-I \u00B7 PHE'; } }
+
+/* ============ Native Google backend (Sheets + Drive via OAuth2) ============
+ * Same adapter as index.html — reads the store's config.json from
+ * Drive/MAK-Projects/Store-Manager/, then reads transactions straight from
+ * the Google Sheet. This report is read-only, so only the read path is ported. */
+
+const CLIENT_ID_B64 = 'MTA2NzA3NTQ5NTIwMC1wMGhhdXJuanRwMzJvZm51YWVuNzQ5NzBybDN1OHY1di5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ==';
+const OAUTH_SCOPE = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
+const DRIVE_ROOT_NAME = 'MAK-Projects';
+const DRIVE_STORE_NAME = 'Store-Manager';
+const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
+const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','AgencyDetails','WorkOrderDetails','NameOfWork','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
+
+const API_TIMEOUT = 20000;
+const API_MAX_IN_FLIGHT = 3;
+
+let accessToken = null;
+let tokenExpiresAt = 0;
+let storeConfig = null;
+let storeConfigFile = null;
+let txnSheetsCache = [];
+
+const GOOGLE_API = {
+  sheets: 'https://sheets.googleapis.com/v4/spreadsheets',
+  drive: 'https://www.googleapis.com/drive/v3'
+};
+
+function b64Decode(b64){
+  const bin = atob(b64);
+  let out = '';
+  for(let i=0;i<bin.length;i++) out += '%' + ('00' + bin.charCodeAt(i).toString(16)).slice(-2);
+  try{ return decodeURIComponent(out); }catch(e){ return atob(b64); }
+}
+const CLIENT_ID = b64Decode(CLIENT_ID_B64);
+
+let apiInFlight = 0;
+const apiWaiters = [];
+function apiTakeSlot(){
+  return new Promise(resolve=>{
+    const take = ()=>{
+      if(apiInFlight < API_MAX_IN_FLIGHT){ apiInFlight++; resolve(); }
+      else apiWaiters.push(take);
+    };
+    take();
+  });
+}
+function apiReleaseSlot(){
+  apiInFlight--;
+  if(apiWaiters.length) apiWaiters.shift()();
+}
+
+function isConnected(){
+  return !!(accessToken && storeConfig && storeConfig.spreadsheetId);
+}
+function hasFreshToken(){
+  return !!accessToken && Date.now() < tokenExpiresAt - 30e3;
+}
+function gisReady(){
+  if(window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
+  return new Promise(res=>{
+    const t = setInterval(()=>{
+      if(window.google && window.google.accounts && window.google.accounts.oauth2){ clearInterval(t); res(); }
+    }, 50);
+  });
+}
+function requestToken(interactive){
+  return new Promise((resolve, reject)=>{
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: OAUTH_SCOPE,
+      callback: resp=>{
+        if(resp.error){ reject(new Error(resp.error_description || resp.error)); return; }
+        accessToken = resp.access_token;
+        tokenExpiresAt = Date.now() + (Number(resp.expires_in || 3600) * 1000);
+        resolve(accessToken);
+      }
+    });
+    try{
+      tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
+    }catch(err){ reject(err); }
+  });
+}
+async function ensureToken(){
+  if(hasFreshToken()) return;
+  await gisReady();
+  await requestToken(false);
+}
+async function authInteractively(){
+  await gisReady();
+  await requestToken(true);
+}
+
+async function gFetch(base, path, opts={}){
+  await apiTakeSlot();
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), API_TIMEOUT);
+  try{
+    let headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
+    let res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
+    if(res.status === 401){
+      await requestToken(false);
+      headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
+      res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
+    }
+    if(!res.ok){
+      let msg = 'Google API error (HTTP ' + res.status + ')';
+      try{ const e = await res.json(); if(e && e.error && e.error.message) msg = e.error.message; }catch(err){}
+      throw new Error(msg);
+    }
+    return res;
+  } finally {
+    clearTimeout(timer);
+    apiReleaseSlot();
+  }
+}
+async function gFetchJson(base, path, opts={}){
+  const res = await gFetch(base, path, opts);
+  if(res.status === 204) return null;
+  return res.json();
+}
+async function sheetsApi(path, opts={}){
+  return gFetchJson(GOOGLE_API.sheets, path, opts);
+}
+async function driveApi(path, opts={}){
+  return gFetchJson(GOOGLE_API.drive, path, opts);
+}
+
+async function findFolder(name, parentId){
+  const q = "name='" + name.replace(/'/g,"\\'") + "' and mimeType='application/vnd.google-apps.folder' and trashed=false" +
+    (parentId ? " and '" + parentId + "' in parents" : '');
+  const data = await driveApi('/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=10');
+  return (data.files && data.files[0]) || null;
+}
+async function ensureFolder(name, parentId){
+  const existing = await findFolder(name, parentId);
+  if(existing) return existing;
+  const body = { name, mimeType:'application/vnd.google-apps.folder' };
+  if(parentId) body.parents = [parentId];
+  return driveApi('/files', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+}
+async function resolveStoreFolder(){
+  const root = await ensureFolder(DRIVE_ROOT_NAME, null);
+  return ensureFolder(DRIVE_STORE_NAME, root.id);
+}
+async function listStoreConfigs(){
+  const folder = await resolveStoreFolder();
+  const q = "'" + folder.id + "' in parents and name contains '.json' and trashed=false";
+  const data = await driveApi('/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=100');
+  return { folder, files: (data.files || []) };
+}
+async function readConfigFile(fileId){
+  const res = await gFetch(GOOGLE_API.drive, '/files/' + encodeURIComponent(fileId) + '?alt=media');
+  const txt = await res.text();
+  return JSON.parse(txt);
+}
+
+function extractSheetId(idOrUrl){
+  if(!idOrUrl) return '';
+  const m = String(idOrUrl).match(/\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : String(idOrUrl).trim();
+}
+async function spreadsheetMeta(ssId){
+  return sheetsApi('/' + encodeURIComponent(ssId) + '?fields=sheets.properties(sheetId,title,index)');
+}
+async function valuesGet(ssId, range){
+  const d = await sheetsApi('/' + encodeURIComponent(ssId) + '/values/' + encodeURIComponent(range) + '?valueRenderOption=UNFORMATTED_VALUE');
+  return d.values || [];
+}
+function sheetRowsAsObjects(vals){
+  if(!vals.length) return [];
+  const headers = vals[0].map(h=>String(h==null?'':h).trim());
+  const rows = [];
+  for(let i=1;i<vals.length;i++){
+    const row = vals[i];
+    if(!row || !row.some(c=>c !== '' && c != null)) continue;
+    const obj = {};
+    Object.defineProperty(obj, '__row', { value:i+1, enumerable:false, writable:true });
+    headers.forEach((h,j)=>obj[h] = (row[j] == null ? '' : row[j]));
+    rows.push(obj);
+  }
+  return rows;
+}
+async function getAllTxnTabs(){
+  if(txnSheetsCache.length) return txnSheetsCache;
+  const meta = await spreadsheetMeta(storeConfig.spreadsheetId);
+  txnSheetsCache = (meta.sheets || [])
+    .map(s=>s.properties)
+    .filter(p=>p.title === 'Transactions' || /^Transactions_\d{4}$/.test(p.title))
+    .sort((a,b)=>(a.index||0)-(b.index||0));
+  return txnSheetsCache;
+}
+async function getAllTxns(){
+  const rows = [];
+  for(const t of await getAllTxnTabs()){
+    let vals;
+    try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
+    rows.push.apply(rows, sheetRowsAsObjects(vals));
+  }
+  return rows;
+}
+function applyFilters(rows, params){
+  if(params.from){ const f = new Date(params.from); rows = rows.filter(r=>new Date(r.Date) >= f); }
+  if(params.to){ const t = new Date(params.to); rows = rows.filter(r=>new Date(r.Date) <= t); }
+  if(params.itemCode) rows = rows.filter(r=>r.ItemCode === params.itemCode);
+  return rows;
+}
+function byNewest(a,b){ return new Date(b.Date) - new Date(a.Date) || b.SlNo - a.SlNo; }
+async function actList(params){
+  const rows = applyFilters(await getAllTxns(), params);
+  rows.sort(byNewest);
+  return { rows, count: rows.length };
+}
+async function actStockRegister(params){
+  const rows = await getAllTxns();
+  const from = params.from ? new Date(params.from) : null;
+  const to = params.to ? new Date(params.to) : null;
+  const byItem = {};
+  rows.forEach(r=>{
+    if(params.itemCode && r.ItemCode !== params.itemCode) return;
+    const key = r.ItemCode;
+    if(!byItem[key]) byItem[key] = { itemCode:r.ItemCode, description:r.ItemDescription, unit:r.Unit, opening:0, received:0, issued:0, closing:0, movements:[] };
+    const d = new Date(r.Date);
+    const qty = Number(r.Qty) || 0;
+    const signed = r.TransactionType === 'Receipt' ? qty : -qty;
+    if(from && d < from) byItem[key].opening += signed;
+    else if((!from || d >= from) && (!to || d <= to)){
+      if(r.TransactionType === 'Receipt') byItem[key].received += qty;
+      else byItem[key].issued += qty;
+    }
+  });
+  Object.keys(byItem).forEach(k=>{
+    const it = byItem[k];
+    it.closing = it.opening + it.received - it.issued;
+  });
+  return { items: Object.values(byItem) };
+}
+
+function emptyFor(action){
+  switch(action){
+    case 'list': return { rows:[], count:0 };
+    case 'stockRegister': return { items:[] };
+    default: return { error:'Unknown action: ' + action };
+  }
+}
+async function apiGet(action, params={}){
+  if(!isConnected()) return emptyFor(action);
+  await ensureToken();
+  switch(action){
+    case 'list': return actList(params);
+    case 'stockRegister': return actStockRegister(params);
+    default: return { error:'Unknown action: ' + action };
+  }
+}
+
+function storeName(){ return (storeConfig && storeConfig.storeName) || 'Store Register'; }
+function officeName(){ return (storeConfig && storeConfig.officeName) || storeName(); }
+function syncNamesFromConfig(){
+  if(!storeConfig) return;
+  try{
+    localStorage.setItem('bdi_store_name', storeConfig.storeName || '');
+    localStorage.setItem('bdi_office_name', storeConfig.officeName || '');
+  }catch(e){}
+}
+async function tryAutoConnect(){
+  const id = localStorage.getItem(CONFIG_FILE_ID_KEY);
+  if(!id) return false;
+  try{
+    await ensureToken();
+    const cfg = await readConfigFile(id);
+    storeConfigFile = { id, name: localStorage.getItem(CONFIG_FILE_NAME_KEY) || 'store.json' };
+    storeConfig = cfg;
+    syncNamesFromConfig();
+    return true;
+  }catch(e){ return false; }
+}
+async function connectInteractively(){
+  await authInteractively();
+  const id = localStorage.getItem(CONFIG_FILE_ID_KEY);
+  if(id){
+    try{
+      const cfg = await readConfigFile(id);
+      storeConfigFile = { id, name: localStorage.getItem(CONFIG_FILE_NAME_KEY) || 'store.json' };
+      storeConfig = cfg;
+      syncNamesFromConfig();
+      return;
+    }catch(e){}
+  }
+  const { files } = await listStoreConfigs();
+  if(files.length === 1){
+    const cfg = await readConfigFile(files[0].id);
+    storeConfigFile = { id: files[0].id, name: files[0].name };
+    storeConfig = cfg;
+    localStorage.setItem(CONFIG_FILE_ID_KEY, files[0].id);
+    localStorage.setItem(CONFIG_FILE_NAME_KEY, files[0].name);
+    syncNamesFromConfig();
+    return;
+  }
+  if(files.length > 1){
+    throw new Error('Several store configs found. Connect in the main store app first — this report reads the same saved store.');
+  }
+  throw new Error('No store config found in Drive. Set up the store in the main app first.');
+}
 
 function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -275,21 +571,8 @@ function fmtDate(d){
   return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
 }
 
-async function apiGet(action, params={}){
-  if(!SCRIPT_URL) throw new Error('Set your Apps Script URL above first.');
-  const url = new URL(SCRIPT_URL);
-  url.searchParams.set('action', action);
-  Object.entries(params).forEach(([k,v])=>{ if(v) url.searchParams.set(k,v); });
-  const res = await fetch(url.toString());
-  let data;
-  try{ data = await res.json(); }
-  catch(e){ throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the URL and the web-app deployment.'); }
-  if(data && data.error) throw new Error(data.error);
-  return data;
-}
-
 async function loadItems(){
-  if(!SCRIPT_URL) return;
+  if(!isConnected()) return;
   try{
     const m = await apiGet('stockRegister');
     mirrorItems = (m.items || []).map(i=>({ itemCode: i.itemCode, description: i.description }));
@@ -430,39 +713,56 @@ function regTableHTML(type, rows, opts){
       <tbody>${rowsHTML || `<tr><td colspan="6" class="dim">No ${label.toLowerCase()} movements.</td></tr>`}</tbody>
     </table>`;
 }
-function regAgencySheet(rows, balances){
+function groupTransactions(rows, keyOf, makeGroup){
   const grouped = {};
   rows.forEach(r=>{
-    const key = String(r.AgencyDetails||'').trim().toLowerCase();
+    const key = keyOf(r);
     if(!key) return;
-    if(!grouped[key]) grouped[key] = { label: r.AgencyDetails.trim(), rcv: [], iss: [] };
+    if(!grouped[key]) grouped[key] = makeGroup(r);
     grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
   });
+  return grouped;
+}
+function cumulativeRunning(){
+  let total = 0;
+  return r => { total += Number(r.Qty)||0; return regNum(total); };
+}
+function cumulativePerMaterial(){
+  const totals = {};
+  return r => {
+    const m = String(r.ItemDescription||'').trim().toLowerCase();
+    totals[m] = (totals[m]||0)+(Number(r.Qty)||0);
+    return regNum(totals[m]);
+  };
+}
+function perItemTotals(group){
+  const byMat = {};
+  group.rcv.concat(group.iss).forEach(r=>{
+    const m = String(r.ItemDescription||'').trim().toLowerCase();
+    if(!byMat[m]) byMat[m] = { label: r.ItemDescription, rcv:0, iss:0 };
+    if(r.TransactionType==='Receipt') byMat[m].rcv += Number(r.Qty)||0;
+    else byMat[m].iss += Number(r.Qty)||0;
+  });
+  return byMat;
+}
+function materialSumRows(byMat){
+  return Object.keys(byMat).sort((a,b)=>byMat[a].label.localeCompare(byMat[b].label)).map(m=>{
+    const it = byMat[m];
+    return `<tr><td>${escapeHtml(it.label)}</td><td class="num rec">${regNum(it.rcv)}</td><td class="num iss">${regNum(it.iss)}</td></tr>`;
+  }).join('');
+}
+function regAgencySheet(rows, balances){
+  const grouped = groupTransactions(rows,
+    r=>String(r.AgencyDetails||'').trim().toLowerCase(),
+    r=>({ label: r.AgencyDetails.trim(), rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>grouped[a].label.localeCompare(grouped[b].label));
   const particulars = r=>[r.ItemDescription, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
-    const rcvCum = {}, issCum = {};
-    const rcvTbl = regTableHTML('Receipt', rcvRows, {
-      particulars,
-      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); rcvCum[m]=(rcvCum[m]||0)+(Number(r.Qty)||0); return regNum(rcvCum[m]); }
-    });
-    const issTbl = regTableHTML('Issue', issRows, {
-      particulars,
-      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); issCum[m]=(issCum[m]||0)+(Number(r.Qty)||0); return regNum(issCum[m]); }
-    });
-    const byMat = {};
-    g.rcv.concat(g.iss).forEach(r=>{
-      const m = String(r.ItemDescription||'').trim().toLowerCase();
-      if(!byMat[m]) byMat[m] = { label: r.ItemDescription, rcv:0, iss:0 };
-      if(r.TransactionType==='Receipt') byMat[m].rcv += Number(r.Qty)||0;
-      else byMat[m].iss += Number(r.Qty)||0;
-    });
-    const sumRows = Object.keys(byMat).sort((a,b)=>byMat[a].label.localeCompare(byMat[b].label)).map(m=>{
-      const it = byMat[m];
-      return `<tr><td>${escapeHtml(it.label)}</td><td class="num rec">${regNum(it.rcv)}</td><td class="num iss">${regNum(it.iss)}</td></tr>`;
-    }).join('');
+    const rcvTbl = regTableHTML('Receipt', rcvRows, { particulars, cumulative: cumulativePerMaterial() });
+    const issTbl = regTableHTML('Issue', issRows, { particulars, cumulative: cumulativePerMaterial() });
+    const sumRows = materialSumRows(perItemTotals(g));
     return `<div class="reg-section">
       <h3>${i+1}. ${escapeHtml(g.label)}</h3>
       ${rcvTbl}${issTbl}
@@ -477,27 +777,16 @@ function regAgencySheet(rows, balances){
   return regIndexHTML(keys.map(k=>({ label: grouped[k].label }))) + sections.join('');
 }
 function regMaterialSheet(rows, balances){
-  const grouped = {};
-  rows.forEach(r=>{
-    const key = String(r.ItemCode||'').trim();
-    if(!key) return;
-    if(!grouped[key]) grouped[key] = { label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] };
-    grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
-  });
+  const grouped = groupTransactions(rows,
+    r=>String(r.ItemCode||'').trim(),
+    r=>({ label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>(grouped[a].label||a).localeCompare(grouped[b].label||b));
   const particulars = r=>[r.AgencyDetails, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
-    let cum = 0, cumIss = 0;
-    const rcvTbl = regTableHTML('Receipt', rcvRows, {
-      particulars,
-      cumulative: r=>{ cum += Number(r.Qty)||0; return regNum(cum); }
-    });
-    const issTbl = regTableHTML('Issue', issRows, {
-      particulars,
-      cumulative: r=>{ cumIss += Number(r.Qty)||0; return regNum(cumIss); }
-    });
+    const rcvTbl = regTableHTML('Receipt', rcvRows, { particulars, cumulative: cumulativeRunning() });
+    const issTbl = regTableHTML('Issue', issRows, { particulars, cumulative: cumulativeRunning() });
     const bal = balances.find(b=>b.itemCode===k) || { opening:0, received:0, issued:0, closing:0 };
     return `<div class="reg-section">
       <h3>${i+1}. ${escapeHtml(g.label||k)} <span class="code">${escapeHtml(k)}${g.unit ? ' · '+escapeHtml(g.unit) : ''}</span></h3>
@@ -543,14 +832,25 @@ document.querySelectorAll('.reg-scope-btn').forEach(btn=>{
   });
 });
 
-$('btnSaveUrl').addEventListener('click', async ()=>{
-  SCRIPT_URL = $('scriptUrl').value.trim();
-  try{ localStorage.setItem('bdi_store_script_url', SCRIPT_URL); }catch(e){}
-  if(!SCRIPT_URL){ $('status').textContent = 'Enter the Apps Script URL of the store backend.'; return; }
-  $('status').textContent = 'Saving and loading materials…';
-  await loadItems();
-  $('status').textContent = 'Connected. Materials loaded.';
-});
+async function connectFlow(interactive){
+  const status = $('status');
+  try{
+    if(interactive){
+      status.textContent = 'Signing in…';
+      await connectInteractively();
+    }else{
+      if(!await tryAutoConnect()) return false;
+    }
+    status.textContent = 'Connected. Loading materials…';
+    await loadItems();
+    status.textContent = 'Connected. Materials loaded.';
+    return true;
+  }catch(err){
+    if(interactive) status.textContent = 'Error: ' + err.message;
+    return false;
+  }
+}
+$('btnConnect').addEventListener('click', ()=>connectFlow(true));
 $('printBtn').addEventListener('click', ()=>{ window.print(); });
 $('generate').addEventListener('click', async ()=>{
   const btn = $('generate');
@@ -582,10 +882,9 @@ $('generate').addEventListener('click', async ()=>{
   finally{ btn.disabled = false; btn.textContent = 'Generate register'; }
 });
 
-(function(){
-  $('scriptUrl').value = SCRIPT_URL;
-  if(SCRIPT_URL){ loadItems(); $('status').textContent = 'Connected. Materials loaded.'; }
-  else $('status').textContent = 'Enter the Apps Script URL of the store backend.';
+(async function(){
+  $('status').textContent = 'Not connected. Click "Connect to your store" to sign in and read the store saved in the main app.';
+  await connectFlow(false);
 })();
 </script>
 </body>

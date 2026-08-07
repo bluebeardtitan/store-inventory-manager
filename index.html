@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2032%2032%22%3E%3Crect%20width=%2232%22%20height=%2232%22%20fill=%22%23202A3A%22/%3E%3Crect%20x=%226%22%20y=%225%22%20width=%2220%22%20height=%2222%22%20rx=%221.5%22%20fill=%22%23F8F3E4%22/%3E%3Crect%20x=%229%22%20y=%228%22%20width=%2214%22%20height=%222%22%20fill=%22%23B23A2A%22/%3E%3Crect%20x=%229%22%20y=%2212%22%20width=%2214%22%20height=%221.5%22%20fill=%22%23A9B3C6%22/%3E%3Crect%20x=%229%22%20y=%2215%22%20width=%2210%22%20height=%221.5%22%20fill=%22%23A9B3C6%22/%3E%3C/svg%3E">
-<title>BD-I Store Register</title>
+<title>Store Register</title>
+<script async src="https://accounts.google.com/gsi/client"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
 <style>
@@ -230,6 +231,13 @@ button:focus-visible, a:focus-visible{
 .item-line-grid{display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-top:10px;}
 .item-line-grid label{margin-top:0;}
 .item-line-head + .field-wrap label{margin-top:8px;}
+.item-line .li-unserv{
+  grid-column:1 / -1; margin-top:12px; width:fit-content;
+  display:inline-flex; align-items:center; gap:7px;
+  font-family:var(--stamp); font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--ink-mut); cursor:pointer; user-select:none;
+}
+.item-line .li-unserv input{accent-color:var(--margin); width:14px; height:14px; cursor:pointer;}
 
 .add-line-btn{
   width:100%; padding:11px;
@@ -438,16 +446,16 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .filter-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 
 /* Register generator — scope stamps */
-.reg-scope{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:14px 0 6px;}
-.reg-scope-btn{
+.reg-scope,.reg-mode{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:14px 0 6px;}
+.reg-scope-btn,.reg-mode-btn{
   padding:11px 6px 9px; border:1.5px solid var(--rule-strong); border-radius:3px;
   background:transparent; color:var(--ink-mut); font-family:var(--stamp); font-size:13px;
-  text-transform:uppercase; letter-spacing:.08em; cursor:pointer; transition:background .15s, color .15s, border-color .15s, transform .12s;
+  text-transform:uppercase; letter-spacing:.08em; cursor:pointer;
+  transition:background .15s, color .15s, border-color .15s, transform .12s;
 }
-.reg-scope-btn:hover{border-color:var(--ink); color:var(--ink);}
-.reg-scope-btn:active{transform:translateY(1px);}
-.reg-scope-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
-
+.reg-scope-btn:hover,.reg-mode-btn:hover{border-color:var(--ink); color:var(--ink);}
+.reg-scope-btn:active,.reg-mode-btn:active{transform:translateY(1px);}
+.reg-scope-btn.active,.reg-mode-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
 /* Movement reports — the register's index leaves, pulled out on the dashboard */
 .rd-sub{margin:0 0 14px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
 .rd-tabs{
@@ -647,7 +655,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
 <div class="topbar">
   <div class="brand">
-    <div class="line1" id="storeLine1">Berhampore Division-I &middot; PHE</div>
+    <div class="line1" id="storeLine1">My Office</div>
     <div class="line2" id="storeLine2">Store Register</div>
   </div>
   <div id="syncDot" class="sync-dot off" title="Not connected"></div>
@@ -700,14 +708,14 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     <div class="rd-scope" data-rd-scope="agency">
       <label for="rdAgency">Agency name <span class="opt">(part is fine)</span></label>
       <div class="field-wrap">
-        <input type="text" id="rdAgency" name="rdAgency" placeholder="e.g. Jogmaya Engineering" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rdAgencySuggest">
+        <input type="text" id="rdAgency" name="rdAgency" placeholder="e.g. Sharma Construction" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rdAgencySuggest">
         <div id="rdAgencySuggest" class="ix-panel"></div>
       </div>
     </div>
     <div class="rd-scope hidden" data-rd-scope="workOrder">
       <label for="rdWorkOrder">Work order no. <span class="opt">(part is fine)</span></label>
       <div class="field-wrap">
-        <input type="text" id="rdWorkOrder" name="rdWorkOrder" placeholder="e.g. 1247/BD-I" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rdWorkOrderSuggest">
+        <input type="text" id="rdWorkOrder" name="rdWorkOrder" placeholder="e.g. WO/1247/2025" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rdWorkOrderSuggest">
         <div id="rdWorkOrderSuggest" class="ix-panel"></div>
       </div>
     </div>
@@ -749,10 +757,10 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   <div id="entryConfirm"></div>
 
   <div class="sheet">
-    <div class="sheet-edge">BD-I &middot; STORE</div>
+    <div class="sheet-edge" id="sheetEdge">STORE &middot; REGISTER</div>
 
     <header class="sheet-head">
-      <div class="sheet-kicker" id="sheetKicker">Berhampore Division-I &middot; PHE &middot; Store Register</div>
+      <div class="sheet-kicker" id="sheetKicker">My Office &middot; Store Register</div>
       <h1 class="sheet-title">New entry</h1>
       <div class="sheet-sub">Record an issue to an agency or a receipt into store against a work order. The HR/Back HR no. is generated when you save.</div>
     </header>
@@ -784,7 +792,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
       <div class="two-col">
         <div class="field field-wrap">
           <label for="fSchemeCode">Scheme code</label>
-          <input type="text" id="fSchemeCode" placeholder="e.g. SM/01013" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="schemeSuggest">
+          <input type="text" id="fSchemeCode" placeholder="e.g. WS/2025" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="schemeSuggest">
           <div id="schemeSuggest" class="ix-panel"></div>
         </div>
         <div class="field">
@@ -813,11 +821,11 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
       </div>
       <div class="field">
         <label for="fAgency">Agency name &amp; address</label>
-        <textarea id="fAgency" placeholder="e.g. Jogmaya Engineering"></textarea>
+        <textarea id="fAgency" placeholder="e.g. Sharma Construction"></textarea>
       </div>
       <div class="field">
         <label for="fWorkOrder">Work order no. &amp; date</label>
-        <input type="text" id="fWorkOrder" placeholder="e.g. W/O NO. 1247/BD-I DATED 30-10-2025">
+        <input type="text" id="fWorkOrder" placeholder="e.g. WO NO. 1247 DATED 30-10-2025">
       </div>
       <div class="field">
         <label for="fNameOfWork">Name of work</label>
@@ -842,107 +850,128 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   </div>
 </div>
 
-<!-- STOCK REGISTER -->
+<!-- STOCK REGISTER (material position + register sheet) -->
 <div class="view" id="view-register">
   <div class="card">
-    <h3>Stock register report</h3>
-    <div class="reg-scope" role="tablist" aria-label="Register grouping">
-      <button type="button" class="reg-scope-btn active" data-reg-view="agency" role="tab" aria-selected="true">Agency wise</button>
-      <button type="button" class="reg-scope-btn" data-reg-view="material" role="tab" aria-selected="false">Material wise</button>
+    <h3>Stock register</h3>
+    <div class="reg-mode" role="tablist" aria-label="Stock register mode">
+      <button type="button" class="reg-mode-btn active" data-reg-mode="ledger" role="tab" aria-selected="true">Material position</button>
+      <button type="button" class="reg-mode-btn" data-reg-mode="sheet" role="tab" aria-selected="false">Register sheet</button>
     </div>
     <div class="filter-grid">
       <div><label for="regFrom">From</label><input type="date" id="regFrom" name="regFrom"></div>
       <div><label for="regTo">To</label><input type="date" id="regTo" name="regTo"></div>
     </div>
-    <div data-reg-field="agency">
-      <label for="regAgency">Agency name <span class="opt">(leave blank for all)</span></label>
-      <div class="field-wrap">
-        <input type="text" id="regAgency" name="regAgency" placeholder="e.g. Jogmaya Engineering" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="regAgencySuggest">
-        <div id="regAgencySuggest" class="ix-panel"></div>
-      </div>
-    </div>
-    <div data-reg-field="material" class="hidden">
-      <label for="regItem">Item code <span class="opt">(leave blank for all)</span></label>
-      <div class="field-wrap">
-        <input type="text" id="regItem" name="regItem" placeholder="e.g. SM/01013" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="regItemSuggest">
-        <div id="regItemSuggest" class="ix-panel"></div>
-      </div>
-    </div>
-    <datalist id="itemList"></datalist>
-    <button type="button" class="primary" id="btnGenerateRegister">Generate register</button>
-  </div>
-  <div class="card hidden" id="registerResults">
-    <div class="reg-toolbar">
-      <span class="muted mono" id="regCount"></span>
-      <button type="button" class="ghost" id="btnRegPrint">Print / PDF</button>
-    </div>
-    <div class="ledger-rule"></div>
-    <div id="registerBody"></div>
-  </div>
-</div>
 
-<!-- LEDGER -->
-<div class="view" id="view-ledger">
-  <div class="card ledger">
-    <div class="ledger-head">
-      <span class="ledger-stamp">Stock ledger</span>
-    </div>
-    <div class="ledger-filter">
-      <div class="lf-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
-        <input type="text" id="ledSearch" aria-label="Search materials" placeholder="Search material (code or name)">
+    <!-- Material position (ledger) -->
+    <div class="ledger" data-reg-mode-pane="ledger">
+      <div class="ledger-head">
+        <span class="ledger-stamp">Stock ledger</span>
       </div>
-      <div class="lf-grid">
-        <div class="lf-field"><label for="ledFrom">From</label><input type="date" id="ledFrom"></div>
-        <div class="lf-field"><label for="ledTo">To</label><input type="date" id="ledTo"></div>
-        <div class="lf-field"><label for="ledItem">Material</label>
-          <input type="text" id="ledItem" list="itemList" placeholder="All materials">
+      <div class="ledger-filter">
+        <div class="lf-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+          <input type="text" id="ledSearch" aria-label="Search materials" placeholder="Search material (code or name)">
         </div>
-        <div class="lf-field"><label for="ledPos">Position</label>
-          <select id="ledPos">
-            <option value="">All</option>
-            <option value="inStock">In stock</option>
-            <option value="short">Short</option>
-          </select>
+        <div class="lf-grid">
+          <div class="lf-field"><label for="ledItem">Material</label>
+            <input type="text" id="ledItem" list="itemList" placeholder="All materials">
+          </div>
+          <div class="lf-field"><label for="ledPos">Position</label>
+            <select id="ledPos">
+              <option value="">All</option>
+              <option value="inStock">In stock</option>
+              <option value="short">Short</option>
+            </select>
+          </div>
+        </div>
+        <div class="lf-actions">
+          <button type="button" class="primary" id="btnLedApply">Apply</button>
+          <button type="button" class="secondary" id="btnLedClear">Reset</button>
         </div>
       </div>
-      <div class="lf-actions">
-        <button type="button" class="primary" id="btnLedApply">Apply</button>
-        <button type="button" class="secondary" id="btnLedClear">Reset</button>
+      <div class="ledger-rule"></div>
+      <div class="hint" id="ledgerMeta"></div>
+      <div id="ledgerChart"><div class="empty-state">Connect your sheet in Settings to see the stock ledger.</div></div>
+    </div>
+
+    <!-- Register sheet (print-ready report) -->
+    <div data-reg-mode-pane="sheet" class="hidden">
+      <div class="reg-scope" role="tablist" aria-label="Register grouping">
+        <button type="button" class="reg-scope-btn active" data-reg-view="agency" role="tab" aria-selected="true">Agency wise</button>
+        <button type="button" class="reg-scope-btn" data-reg-view="material" role="tab" aria-selected="false">Material wise</button>
+      </div>
+      <div data-reg-field="agency">
+        <label for="regAgency">Agency name <span class="opt">(leave blank for all)</span></label>
+        <div class="field-wrap">
+          <input type="text" id="regAgency" name="regAgency" placeholder="e.g. Sharma Construction" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="regAgencySuggest">
+          <div id="regAgencySuggest" class="ix-panel"></div>
+        </div>
+      </div>
+      <div data-reg-field="material" class="hidden">
+        <label for="regItem">Item code <span class="opt">(leave blank for all)</span></label>
+        <div class="field-wrap">
+          <input type="text" id="regItem" name="regItem" placeholder="e.g. IT/01001" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="regItemSuggest">
+          <div id="regItemSuggest" class="ix-panel"></div>
+        </div>
+      </div>
+      <datalist id="itemList"></datalist>
+      <button type="button" class="primary" id="btnGenerateRegister">Generate register</button>
+      <div class="card hidden" id="registerResults">
+        <div class="reg-toolbar">
+          <span class="muted mono" id="regCount"></span>
+          <button type="button" class="ghost" id="btnRegPrint">Print / PDF</button>
+        </div>
+        <div class="ledger-rule"></div>
+        <div id="registerBody"></div>
       </div>
     </div>
-    <div class="ledger-rule"></div>
-    <div class="hint" id="ledgerMeta"></div>
-    <div id="ledgerChart"><div class="empty-state">Connect your sheet in Settings to see the stock ledger.</div></div>
   </div>
 </div>
 
 <!-- SETTINGS -->
 <div class="view" id="view-settings">
   <div class="card">
-    <h3>Connect your Google Sheet</h3>
-    <label for="scriptUrl">Apps Script Web App URL</label>
-    <input type="text" id="scriptUrl" name="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
-    <button type="button" class="primary" id="btnSaveUrl">Save & test connection</button>
-    <div class="hint" id="settingsStatus"></div>
+    <h3>Google account</h3>
+    <div class="hint" id="authStatus">Sign in with Google to read and write your store's spreadsheet directly — no server or Apps Script in between.</div>
+    <button type="button" class="primary" id="btnSignIn">Sign in with Google</button>
+    <button type="button" class="secondary hidden" id="btnSignOut">Sign out</button>
+  </div>
+  <div class="card">
+    <h3>Your store</h3>
+    <label for="storeName">Store name</label>
+    <input type="text" id="storeName" placeholder="e.g. Store Register">
+    <label for="officeName">Office / division name</label>
+    <input type="text" id="officeName" placeholder="e.g. My Office">
+    <label for="storeCode">Store code <span class="opt">(used in HR numbers, e.g. ISS/000001/STORE)</span></label>
+    <input type="text" id="storeCode" placeholder="e.g. STORE">
+    <label for="storeSpreadsheet">Store spreadsheet URL</label>
+    <input type="text" id="storeSpreadsheet" placeholder="https://docs.google.com/spreadsheets/d/...">
+    <label for="storeMaster">Items &amp; schemes master URL</label>
+    <input type="text" id="storeMaster" placeholder="https://docs.google.com/spreadsheets/d/... (ItemMaster + SchemeMaster tabs)">
+    <label for="storeWorkOrderMaster">Work order master URL</label>
+    <input type="text" id="storeWorkOrderMaster" placeholder="https://docs.google.com/spreadsheets/d/... (one tab per year)">
+    <div class="hint">Saved to a config file in your Drive under MAK-Projects/Store-Manager/. Different stores = different config files, each on its own Google account.</div>
+    <button type="button" class="primary" id="btnSaveStore">Save &amp; connect</button>
+    <div class="hint" id="storeStatus"></div>
     <button type="button" class="secondary" id="btnRefreshMeta">Refresh master data</button>
     <div class="hint" id="metaCacheStatus"></div>
   </div>
   <div class="card">
-    <h3>Register details</h3>
-    <label for="officeName">Office / division name</label>
-    <input type="text" id="officeName" placeholder="e.g. Berhampore Division-I · PHE">
-    <label for="storeName">Store name</label>
-    <input type="text" id="storeName" placeholder="e.g. Store Register">
-    <div class="hint">Shown in the top bar, on new entry sheets, and in the browser tab.</div>
-    <button type="button" class="primary" id="btnSaveStoreName">Save details</button>
+    <h3>Backup &amp; sync</h3>
+    <button type="button" class="secondary" id="btnLocalXlsx">Save local copy (.xlsx)</button>
+    <button type="button" class="secondary" id="btnLocalCsv">Save local copy (.csv)</button>
+    <button type="button" class="secondary" id="btnDriveBackup">Push backup to Drive</button>
+    <div class="hint" id="backupStatus"></div>
   </div>
   <div class="card">
     <h3>How it's wired</h3>
     <div class="hint">
-      This page is a static site with no server of its own. It talks directly to a Google Apps Script
-      web app deployed on your Google account, which reads and writes your Google Sheet. Your data
-      never passes through any third-party server.
+      This page is a static site with no server of its own. It talks directly to the Google
+      Sheets and Drive APIs using the Google account you sign in with. Your store's data lives
+      in a spreadsheet in that account's Drive, and its settings live in a small config file
+      under Drive &rsaquo; MAK-Projects &rsaquo; Store-Manager. Nothing passes through any
+      third-party server.
     </div>
   </div>
 </div>
@@ -960,11 +989,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   </button>
   <button class="nav-btn" data-view="register">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z" stroke-linejoin="round"/><path d="M8 9h8M8 13h8M8 17h5" stroke-linecap="round"/></svg>
-    <span>Register</span>
-  </button>
-  <button class="nav-btn" data-view="ledger">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" stroke-linejoin="round"/><path d="M8 8h8M8 12h8M8 16h5" stroke-linecap="round"/><path d="M16.5 18.5l2 2 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>Ledger</span>
+    <span>Stock register</span>
   </button>
   <button class="nav-btn" data-view="settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
@@ -974,12 +999,10 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
 <script>
 /* ---------------- Config / storage ---------------- */
-const CFG_KEY = 'bdi_store_script_url';
 const STORE_NAME_KEY = 'bdi_store_name';
 const OFFICE_NAME_KEY = 'bdi_office_name';
-let SCRIPT_URL = localStorage.getItem(CFG_KEY) || '';
 let STORE_NAME = localStorage.getItem(STORE_NAME_KEY) || 'Store Register';
-let OFFICE_NAME = localStorage.getItem(OFFICE_NAME_KEY) || 'Berhampore Division-I \u00B7 PHE';
+let OFFICE_NAME = localStorage.getItem(OFFICE_NAME_KEY) || '';
 let META = { items: [], schemes: [] };
 let FOPTS = { agencies: [], workOrders: [], schemes: [] };
 let transactedItems = [];
@@ -1032,11 +1055,14 @@ function updateMetaCacheStatus(){
 
 function applyStoreName(){
   const name = STORE_NAME.trim() || 'Store Register';
-  const office = OFFICE_NAME.trim() || 'Berhampore Division-I \u00B7 PHE';
+  const office = OFFICE_NAME.trim() || name;
+  const code = (storeConfig && storeConfig.storeCode) ? storeConfig.storeCode.toUpperCase() : 'STORE';
   $('storeLine1').textContent = office;
   $('storeLine2').textContent = name;
   $('sheetKicker').textContent = office + ' \u00B7 ' + name;
-  document.title = 'BD-I \u00B7 ' + name;
+  const edge = $('sheetEdge');
+  if(edge) edge.textContent = code + ' \u00B7 STORE';
+  document.title = name;
 }
 
 function toast(msg){
@@ -1052,7 +1078,7 @@ function goView(view){
   $('view-'+view).classList.add('active');
   window.scrollTo({ top:0 });
   if(view==='dashboard'){ loadDashboard(); }
-  if(view==='ledger'){ loadLedger(); }
+  if(view==='register' && regMode === 'ledger'){ loadLedger(); }
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>goView(btn.dataset.view));
@@ -1060,8 +1086,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 
 /* ---------------- API helper ---------------- */
 const API_TIMEOUT = 20000;   // abort a hung request after 20s (cold start / flaky link)
-const API_MAX_IN_FLIGHT = 3; // don't stack parallel Apps Script calls (throttling/quota)
-const API_RETRY_DELAY_MS = 800;  // backoff before a single idempotent GET retry
+const API_MAX_IN_FLIGHT = 3; // don't stack parallel Google API calls (quota/timeouts)
 const TOAST_MS = 2200;           // toast auto-dismiss delay
 const SUGGEST_MAX = 30;          // cap for index-leaf / work-order result lists
 const WO_SEARCH_DEBOUNCE_MS = 350; // work-order finder keystroke debounce
@@ -1083,94 +1108,889 @@ function apiReleaseSlot(){
   if(apiWaiters.length) apiWaiters.shift()();
 }
 
-async function apiFetch(url, opts){
+/* ============ Native Google backend (Sheets + Drive via OAuth2) ============
+ * Replaces the Apps Script web app. The rest of the page keeps calling
+ * apiGet(action, params) / apiPost(action, body) — same contract, new guts.
+ * Per-store settings live in a config.json under Drive/MAK-Projects/Store-Manager/. */
+
+/* OAuth client id (a public identifier — base64 only so it isn't plain text in
+ * the source; obfuscation, never a secret). Decoded at runtime with atob(). */
+const CLIENT_ID_B64 = 'MTA2NzA3NTQ5NTIwMC1wMGhhdXJuanRwMzJvZm51YWVuNzQ5NzBybDN1OHY1di5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ==';
+const OAUTH_SCOPE = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
+const DRIVE_ROOT_NAME = 'MAK-Projects';
+const DRIVE_STORE_NAME = 'Store-Manager';
+const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
+const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
+const CONFIG_CACHE_KEY = 'bdi_store_config';
+const CONFIG_CACHE_TTL = 5*60e3;
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','AgencyDetails','WorkOrderDetails','NameOfWork','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
+
+let accessToken = null;
+let tokenExpiresAt = 0;
+let authProfile = null;
+let storeConfig = null;     // per-store config loaded from Drive
+let storeConfigFile = null; // { id, name } of the config.json
+let txnSheetsCache = [];    // discovered Transactions / Transactions_<year> tabs
+
+const GOOGLE_API = {
+  sheets: 'https://sheets.googleapis.com/v4/spreadsheets',
+  drive: 'https://www.googleapis.com/drive/v3'
+};
+
+function b64Decode(b64){
+  const bin = atob(b64);
+  let out = '';
+  for(let i=0;i<bin.length;i++) out += '%' + ('00' + bin.charCodeAt(i).toString(16)).slice(-2);
+  try{ return decodeURIComponent(out); }catch(e){ return atob(b64); }
+}
+const CLIENT_ID = b64Decode(CLIENT_ID_B64);
+
+function isConnected(){
+  return !!(accessToken && storeConfig && storeConfig.spreadsheetId);
+}
+const TOKEN_FRESH_MARGIN_MS = 30e3; // re-auth 30s before a token actually expires
+function hasFreshToken(){
+  return !!accessToken && Date.now() < tokenExpiresAt - TOKEN_FRESH_MARGIN_MS;
+}
+function gisReady(){
+  if(window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
+  return new Promise(res=>{
+    const t = setInterval(()=>{
+      if(window.google && window.google.accounts && window.google.accounts.oauth2){ clearInterval(t); res(); }
+    }, 50);
+  });
+}
+
+/* Popup / silent token request through Google Identity Services. */
+function requestToken(interactive){
+  return new Promise((resolve, reject)=>{
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: OAUTH_SCOPE,
+      callback: resp=>{
+        if(resp.error){ reject(new Error(resp.error_description || resp.error)); return; }
+        accessToken = resp.access_token;
+        tokenExpiresAt = Date.now() + (Number(resp.expires_in || 3600) * 1000);
+        resolve(accessToken);
+      }
+    });
+    try{
+      tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
+    }catch(err){ reject(err); }
+  });
+}
+async function ensureToken(){
+  if(hasFreshToken()) return;
+  await gisReady();
+  await requestToken(false);
+}
+async function authInteractively(){
+  await gisReady();
+  await requestToken(true);
+  await fetchProfile();
+  return authProfile;
+}
+async function fetchProfile(){
+  if(!accessToken) return null;
+  try{
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers:{ Authorization:'Bearer ' + accessToken } });
+    if(res.ok){
+      const u = await res.json();
+      authProfile = { email: u.email, name: u.name };
+    }
+  }catch(e){}
+  return authProfile;
+}
+function signOut(){
+  if(accessToken && window.google && window.google.accounts){
+    try{ window.google.accounts.oauth2.revoke(accessToken, ()=>{}); }catch(e){}
+  }
+  accessToken = null;
+  tokenExpiresAt = 0;
+  authProfile = null;
+}
+
+/* Low-level Google API call: in-flight cap, timeout, silent refresh on 401. */
+async function gFetch(base, path, opts={}){
   await apiTakeSlot();
   const ctrl = new AbortController();
   const timer = setTimeout(()=>ctrl.abort(), API_TIMEOUT);
   try{
-    const res = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
-    let data;
-    try{ data = await res.json(); }
-    catch(e){
-      throw new Error('Backend not reachable (HTTP ' + res.status + '). Check the Script URL in Settings and that the web app is deployed.');
+    let headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
+    let res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
+    if(res.status === 401){
+      await requestToken(false);
+      headers = Object.assign({ Authorization:'Bearer ' + accessToken }, opts.headers || {});
+      res = await fetch(base + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
     }
-    if(data && data.error) throw new Error(data.error);
-    return data;
+    if(!res.ok){
+      let msg = 'Google API error (HTTP ' + res.status + ')';
+      try{ const e = await res.json(); if(e && e.error && e.error.message) msg = e.error.message; }catch(err){}
+      throw new Error(msg);
+    }
+    return res;
   } finally {
     clearTimeout(timer);
     apiReleaseSlot();
   }
 }
-async function apiGet(action, params={}){
-  if(!SCRIPT_URL){ toast('Set your Apps Script URL in Settings first'); throw new Error('no url'); }
-  const url = new URL(SCRIPT_URL);
-  url.searchParams.set('action', action);
-  Object.entries(params).forEach(([k,v])=>{ if(v) url.searchParams.set(k,v); });
-  try{
-    return await apiFetch(url.toString());
-  }catch(err){
-    // GET is idempotent: retry once after a timeout/network blip
-    if(err && (err.name === 'AbortError' || /network|failed to fetch|load failed/i.test(err.message || ''))){
-      await new Promise(r=>setTimeout(r, API_RETRY_DELAY_MS));
-      return await apiFetch(url.toString());
-    }
-    throw err;
-  }
+async function gFetchJson(base, path, opts={}){
+  const res = await gFetch(base, path, opts);
+  if(res.status === 204) return null;
+  return res.json();
 }
-async function apiPost(action, body={}){
-  if(!SCRIPT_URL){ toast('Set your Apps Script URL in Settings first'); throw new Error('no url'); }
-  return apiFetch(SCRIPT_URL, {
+async function sheetsApi(path, opts={}){
+  return gFetchJson(GOOGLE_API.sheets, path, opts);
+}
+async function driveApi(path, opts={}){
+  return gFetchJson(GOOGLE_API.drive, path, opts);
+}
+
+/* ---------------- Drive: store folder + config.json ---------------- */
+
+async function findFolder(name, parentId){
+  const q = "name='" + name.replace(/'/g,"\\'") + "' and mimeType='application/vnd.google-apps.folder' and trashed=false" +
+    (parentId ? " and '" + parentId + "' in parents" : '');
+  const data = await driveApi('/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=10');
+  return (data.files && data.files[0]) || null;
+}
+async function ensureFolder(name, parentId){
+  const existing = await findFolder(name, parentId);
+  if(existing) return existing;
+  const body = { name, mimeType:'application/vnd.google-apps.folder' };
+  if(parentId) body.parents = [parentId];
+  return driveApi('/files', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+}
+async function resolveStoreFolder(){
+  const root = await ensureFolder(DRIVE_ROOT_NAME, null);
+  return ensureFolder(DRIVE_STORE_NAME, root.id);
+}
+async function listStoreConfigs(){
+  const folder = await resolveStoreFolder();
+  const q = "'" + folder.id + "' in parents and name contains '.json' and trashed=false";
+  const data = await driveApi('/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=100');
+  return { folder, files: (data.files || []) };
+}
+async function readConfigFile(fileId){
+  const res = await gFetch(GOOGLE_API.drive, '/files/' + encodeURIComponent(fileId) + '?alt=media');
+  const txt = await res.text();
+  return JSON.parse(txt);
+}
+async function writeConfigFile(fileId, cfg){
+  await gFetch(GOOGLE_API.drive, '/files/' + encodeURIComponent(fileId) + '?uploadType=media', {
+    method:'PATCH',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(cfg)
+  });
+}
+async function createConfigFile(folderId, name, cfg){
+  const meta = JSON.stringify({ name, parents:[folderId], mimeType:'application/json' });
+  const data = JSON.stringify(cfg);
+  const boundary = 'bdi_config_' + Date.now().toString(36);
+  const body =
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n' +
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + data + '\r\n' +
+    '--' + boundary + '--';
+  return driveApi('/files?uploadType=multipart', {
     method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'}, // avoids CORS preflight against Apps Script
-    body: JSON.stringify({ action, ...body })
+    headers:{ 'Content-Type':'multipart/related; boundary=' + boundary },
+    body
   });
 }
 
+/* ---------------- Sheets helpers ---------------- */
+
+function extractSheetId(idOrUrl){
+  if(!idOrUrl) return '';
+  const m = String(idOrUrl).match(/\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : String(idOrUrl).trim();
+}
+function colLetter(n){
+  let s = '';
+  while(n > 0){ const m = (n-1) % 26; s = String.fromCharCode(65 + m) + s; n = (n-m-1)/26; }
+  return s;
+}
+async function spreadsheetMeta(ssId){
+  return sheetsApi('/' + encodeURIComponent(ssId) + '?fields=sheets.properties(sheetId,title,index)');
+}
+async function valuesGet(ssId, range){
+  const d = await sheetsApi('/' + encodeURIComponent(ssId) + '/values/' + encodeURIComponent(range) + '?valueRenderOption=UNFORMATTED_VALUE');
+  return d.values || [];
+}
+async function valuesPut(ssId, range, values){
+  await sheetsApi('/' + encodeURIComponent(ssId) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', {
+    method:'PUT', body: JSON.stringify({ values })
+  });
+}
+async function valuesAppend(ssId, range, values){
+  await sheetsApi('/' + encodeURIComponent(ssId) + '/values/' + encodeURIComponent(range) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
+    method:'POST', body: JSON.stringify({ values })
+  });
+}
+async function addSheet(ssId, title){
+  await sheetsApi('/' + encodeURIComponent(ssId) + ':batchUpdate', {
+    method:'POST', body: JSON.stringify({ requests:[{ addSheet:{ properties:{ title } } }] })
+  });
+}
+async function batchUpdate(ssId, requests){
+  await sheetsApi('/' + encodeURIComponent(ssId) + ':batchUpdate', {
+    method:'POST', body: JSON.stringify({ requests })
+  });
+}
+
+function sheetRowsAsObjects(vals){
+  if(!vals.length) return [];
+  const headers = vals[0].map(h=>String(h==null?'':h).trim());
+  const rows = [];
+  for(let i=1;i<vals.length;i++){
+    const row = vals[i];
+    if(!row || !row.some(c=>c !== '' && c != null)) continue;
+    const obj = {};
+    Object.defineProperty(obj, '__row', { value:i+1, enumerable:false, writable:true });
+    headers.forEach((h,j)=>obj[h] = (row[j] == null ? '' : row[j]));
+    rows.push(obj);
+  }
+  return rows;
+}
+
+/* ---------------- Reads ---------------- */
+
+async function getAllTxnTabs(){
+  if(txnSheetsCache.length) return txnSheetsCache;
+  const meta = await spreadsheetMeta(storeConfig.spreadsheetId);
+  txnSheetsCache = (meta.sheets || [])
+    .map(s=>s.properties)
+    .filter(p=>p.title === 'Transactions' || /^Transactions_\d{4}$/.test(p.title))
+    .sort((a,b)=>(a.index||0)-(b.index||0));
+  return txnSheetsCache;
+}
+let txnRowsCache = null; // single-flight cache of all transaction rows; null = stale/in-flight unknown
+function invalidateTxnCache(){ txnRowsCache = null; }
+async function buildAllTxnRows(){
+  const rows = [];
+  for(const t of await getAllTxnTabs()){
+    let vals;
+    try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
+    rows.push.apply(rows, sheetRowsAsObjects(vals));
+  }
+  return rows;
+}
+async function getAllTxns(){
+  if(!txnRowsCache) txnRowsCache = buildAllTxnRows().catch(e => { txnRowsCache = null; throw e; });
+  return txnRowsCache;
+}
+function containsText(value, query){
+  return String(value || '').toLowerCase().indexOf(query) > -1;
+}
+function applyFilters(rows, params){
+  if(params.from){ const f = new Date(params.from); rows = rows.filter(r=>new Date(r.Date) >= f); }
+  if(params.to){ const t = new Date(params.to); rows = rows.filter(r=>new Date(r.Date) <= t); }
+  if(params.type) rows = rows.filter(r=>r.TransactionType === params.type);
+  if(params.schemeCode) rows = rows.filter(r=>r.SchemeCode === params.schemeCode);
+  if(params.itemCode) rows = rows.filter(r=>r.ItemCode === params.itemCode);
+  if(params.noVoucherOnly === 'true') rows = rows.filter(r=>!r.VoucherNo);
+  if(params.agency){ const q = params.agency.toLowerCase(); rows = rows.filter(r=>containsText(r.AgencyDetails, q)); }
+  if(params.workOrder){ const q = params.workOrder.toLowerCase(); rows = rows.filter(r=>containsText(r.WorkOrderDetails, q)); }
+  if(params.q){
+    const q = params.q.toLowerCase();
+    rows = rows.filter(r=>containsText(r.AgencyDetails,q) || containsText(r.WorkOrderDetails,q) || containsText(r.NameOfWork,q) || containsText(r.ItemDescription,q) || containsText(r.HRNo,q) || containsText(r.VoucherNo,q));
+  }
+  return rows;
+}
+function byNewest(a,b){ return new Date(b.Date) - new Date(a.Date) || b.SlNo - a.SlNo; }
+
+async function actList(params){
+  const rows = applyFilters(await getAllTxns(), params);
+  rows.sort(byNewest);
+  const newestN = Number(params.n);
+  if(newestN) rows.splice(newestN, rows.length);
+  return { rows, count: rows.length };
+}
+async function actStockRegister(params){
+  const rows = await getAllTxns();
+  const from = params.from ? new Date(params.from) : null;
+  const to = params.to ? new Date(params.to) : null;
+  const byItem = {};
+  rows.forEach(r=>{
+    if(params.itemCode && r.ItemCode !== params.itemCode) return;
+    const key = r.ItemCode;
+    if(!byItem[key]) byItem[key] = { itemCode:r.ItemCode, description:r.ItemDescription, unit:r.Unit, opening:0, received:0, issued:0, closing:0, movements:[] };
+    const d = new Date(r.Date);
+    const qty = Number(r.Qty) || 0;
+    const signed = r.TransactionType === 'Receipt' ? qty : -qty;
+    if(from && d < from) byItem[key].opening += signed;
+    else if((!from || d >= from) && (!to || d <= to)){
+      if(r.TransactionType === 'Receipt') byItem[key].received += qty;
+      else byItem[key].issued += qty;
+      byItem[key].movements.push({ date:r.Date, type:r.TransactionType, hrNo:r.HRNo, voucherNo:r.VoucherNo, agency:r.AgencyDetails, qty });
+    }
+  });
+  Object.keys(byItem).forEach(k=>{
+    const it = byItem[k];
+    it.closing = it.opening + it.received - it.issued;
+    it.movements.sort((a,b)=>new Date(a.date) - new Date(b.date));
+  });
+  return { items: Object.values(byItem) };
+}
+async function actFilterOptions(){
+  const rows = await getAllTxns();
+  const agencies = new Set(), workOrders = new Set(), schemes = {};
+  rows.forEach(r=>{
+    const a = String(r.AgencyDetails||'').trim(); if(a) agencies.add(a);
+    const w = String(r.WorkOrderDetails||'').trim(); if(w) workOrders.add(w);
+    const c = String(r.SchemeCode||'').trim(); if(c) schemes[c] = String(r.SchemeName||'');
+  });
+  const byName = (a,b)=>a.localeCompare(b);
+  return {
+    agencies: Array.from(agencies).sort(byName),
+    workOrders: Array.from(workOrders).sort(byName),
+    schemes: Object.keys(schemes).sort(byName).map(c=>({ schemeCode:c, schemeName:schemes[c] }))
+  };
+}
+async function actMeta(){
+  const items = [], schemes = [];
+  const masterId = storeConfig.masterSheetId ? extractSheetId(storeConfig.masterSheetId) : '';
+  if(masterId){
+    try{
+      sheetRowsAsObjects(await valuesGet(masterId, 'ItemMaster')).forEach(r=>{ if(r.ItemCode) items.push({ itemCode:r.ItemCode, description:r.Description, unit:r.Unit }); });
+    }catch(e){}
+    try{
+      sheetRowsAsObjects(await valuesGet(masterId, 'SchemeMaster')).forEach(r=>{ if(r.SchemeCode) schemes.push({ schemeCode:r.SchemeCode, schemeName:r.SchemeName }); });
+    }catch(e){}
+  }
+  const workOrderYears = [];
+  const woId = storeConfig.workOrderMasterSheetId ? extractSheetId(storeConfig.workOrderMasterSheetId) : '';
+  if(woId){
+    try{
+      const m = await spreadsheetMeta(woId);
+      workOrderYears.push.apply(workOrderYears, (m.sheets||[]).map(s=>s.properties.title).filter(t=>/^\d{4}$/.test(t)).sort().reverse());
+    }catch(e){}
+  }
+  return { items, schemes, workOrderYears };
+}
+async function openWorkOrderTabValues(year){
+  const woId = storeConfig.workOrderMasterSheetId ? extractSheetId(storeConfig.workOrderMasterSheetId) : '';
+  if(!woId) return null;
+  try{ return await valuesGet(woId, String(year)); }catch(e){ return null; }
+}
+async function actWorkOrderIndex(params){
+  const year = params.year;
+  if(!year) throw new Error('year (calendar year, e.g. 2026) is required.');
+  const vals = await openWorkOrderTabValues(year);
+  if(!vals) return { rows:[], note:'No tab named "' + year + '" found in the Work Order Master file.' };
+  const rows = sheetRowsAsObjects(vals)
+    .map(r=>({ AgencyName:r.AgencyName, WorkOrderNo:r.WorkOrderNo, WorkOrderDate:r.WorkOrderDate, NameOfWork:r.NameOfWork }))
+    .filter(r=>r.WorkOrderNo);
+  return { rows };
+}
+async function actWorkOrders(params){
+  const year = params.year;
+  if(!year) throw new Error('year (calendar year, e.g. 2026) is required.');
+  const vals = await openWorkOrderTabValues(year);
+  if(!vals) return { rows:[], note:'No tab named "' + year + '" found in the Work Order Master file.' };
+  let rows = sheetRowsAsObjects(vals)
+    .map(r=>({ AgencyName:r.AgencyName, WorkOrderNo:r.WorkOrderNo, WorkOrderDate:r.WorkOrderDate, NameOfWork:r.NameOfWork }))
+    .filter(r=>r.WorkOrderNo);
+  if(params.q){
+    const q = params.q.toLowerCase();
+    rows = rows.filter(r=>containsText(r.AgencyName,q) || containsText(r.WorkOrderNo,q) || containsText(r.NameOfWork,q));
+  }
+  return { rows: rows.slice(0, WORK_ORDER_SNIPPET_MAX) };
+}
+const WORK_ORDER_SNIPPET_MAX = 20; // legacy snippet cap; the full index is fetched via actWorkOrderIndex
+function monthlyTotals(rows, monthStart){
+  const t = { issuedQty:0, receivedQty:0, issuedLines:0, receivedLines:0 };
+  rows.forEach(r=>{
+    if(new Date(r.Date) >= monthStart){
+      if(r.TransactionType === 'Issue'){ t.issuedQty += Number(r.Qty)||0; t.issuedLines++; }
+      else { t.receivedQty += Number(r.Qty)||0; t.receivedLines++; }
+    }
+  });
+  return t;
+}
+function yearHrSets(rows, year){
+  const issued = new Set(), received = new Set();
+  rows.forEach(r=>{
+    if(new Date(r.Date).getFullYear() !== year) return;
+    if(r.TransactionType === 'Issue') issued.add(String(r.HRNo));
+    else if(r.TransactionType === 'Receipt') received.add(String(r.HRNo));
+  });
+  return { issued, received };
+}
+function perItemStock(rows){
+  const stock = {};
+  rows.forEach(r=>{
+    const q = Number(r.Qty)||0;
+    stock[r.ItemCode] = (stock[r.ItemCode]||0) + (r.TransactionType === 'Receipt' ? q : -q);
+  });
+  return stock;
+}
+function stockPositionCounts(stock){
+  let positive=0, negative=0;
+  Object.keys(stock).forEach(k=>{ if(stock[k]>0) positive++; else if(stock[k]<0) negative++; });
+  return { positive, negative };
+}
+async function actDashboard(){
+  const rows = await getAllTxns();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const m = monthlyTotals(rows, monthStart);
+  const hrs = yearHrSets(rows, now.getFullYear());
+  const pos = stockPositionCounts(perItemStock(rows));
+  return {
+    monthIssuedQty:m.issuedQty, monthReceivedQty:m.receivedQty, monthIssuedLines:m.issuedLines, monthReceivedLines:m.receivedLines,
+    yearIssuedHrs:hrs.issued.size, yearReceivedHrs:hrs.received.size,
+    positiveStock:pos.positive, negativeStock:pos.negative,
+    totalTxns:rows.length,
+    pendingVoucher:rows.filter(r=>!r.VoucherNo).length,
+    recent:rows.slice().sort(byNewest).slice(0,8)
+  };
+}
+
+/* ---------------- Writes ---------------- */
+
+async function nextHrNo(type, dateStr){
+  const year = new Date(dateStr + 'T00:00:00').getFullYear();
+  const prefix = type === 'Issue' ? 'ISS' : 'RET';
+  storeConfig.hrCounters = storeConfig.hrCounters || {};
+  storeConfig.hrCounters[prefix] = storeConfig.hrCounters[prefix] || {};
+  const seq = (Number(storeConfig.hrCounters[prefix][year]) || 0) + 1;
+  storeConfig.hrCounters[prefix][year] = seq;
+  const code = storeConfig.storeCode ? '/' + storeConfig.storeCode.toUpperCase() : '';
+  return prefix + '/' + String(seq).padStart(6, '0') + code;
+}
+async function actAddTransaction(body){
+  if(!body.items || !body.items.length) throw new Error('At least one item line is required.');
+  const ssId = storeConfig.spreadsheetId;
+  const hrNo = await nextHrNo(body.transactionType, body.date);
+  const liveVals = await valuesGet(ssId, 'Transactions');
+  let slNo = Math.max(0, liveVals.length - 1);
+  const rows = body.items.map((it, idx)=>{
+    slNo += 1;
+    const vals = {};
+    vals.SlNo = slNo; vals.Date = body.date; vals.TransactionType = body.transactionType; vals.HRNo = hrNo;
+    vals.SchemeCode = body.schemeCode; vals.SchemeName = body.schemeName;
+    vals.AgencyDetails = body.agencyDetails; vals.WorkOrderDetails = body.workOrderDetails; vals.NameOfWork = body.nameOfWork;
+    vals.OfficeOrderNo = body.officeOrderNo; vals.RoadChallanNo = body.roadChallanNo; vals.ItemNo = idx + 1;
+    vals.ItemCode = it.itemCode; vals.ItemDescription = it.itemDescription; vals.Qty = Number(it.qty) || 0;
+    vals.Unit = it.unit; vals.VoucherNo = body.voucherNo;
+    return TXN_HEADERS.map(h=>vals[h] == null ? '' : vals[h]);
+  });
+  await valuesAppend(ssId, 'Transactions', rows);
+  await persistConfig();
+  invalidateTxnCache(); txnSheetsCache = [];
+  return { success:true, hrNo, voucherNo: body.voucherNo || '', lines: rows.length };
+}
+async function actUpdateVoucher(body){
+  if(!body.hrNo || !body.voucherNo) throw new Error('hrNo and voucherNo are both required.');
+  const col = TXN_HEADERS.indexOf('VoucherNo') + 1;
+  const hrCol = TXN_HEADERS.indexOf('HRNo') + 1;
+  const updates = [];
+  let updated = 0;
+  for(const t of await getAllTxnTabs()){
+    let vals;
+    try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
+    for(let i=1;i<vals.length;i++){
+      if(String(vals[i][hrCol-1]) === body.hrNo){
+        updates.push({ range: t.title + '!R' + (i+1) + 'C' + col, values:[[body.voucherNo]] });
+        updated++;
+      }
+    }
+  }
+  if(!updated) throw new Error('No transaction found with HR No. ' + body.hrNo);
+  await sheetsApi('/' + encodeURIComponent(storeConfig.spreadsheetId) + '/values:batchUpdate', {
+    method:'POST', body: JSON.stringify({ valueInputOption:'USER_ENTERED', data: updates })
+  });
+  invalidateTxnCache(); txnSheetsCache = [];
+  return { success:true, updated };
+}
+
+/* ---------------- Store bootstrap (migrations + year-end archive) ---------------- */
+
+function currentStoreYear(){ return new Date().getFullYear(); }
+async function persistConfig(){
+  if(!storeConfigFile) return;
+  storeConfig.updatedAt = new Date().toISOString();
+  await writeConfigFile(storeConfigFile.id, storeConfig);
+  cacheWrite(CONFIG_CACHE_KEY, storeConfig);
+}
+async function ensureStore(){
+  const ssId = storeConfig.spreadsheetId;
+  let meta = await spreadsheetMeta(ssId);
+  const tabs = (meta.sheets || []).map(s=>s.properties);
+  if(!tabs.some(t=>t.title === 'Transactions')){
+    await addSheet(ssId, 'Transactions');
+    await valuesPut(ssId, 'Transactions!A1:' + colLetter(TXN_HEADERS.length) + '1', [TXN_HEADERS]);
+  }
+  for(const t of (await spreadsheetMeta(ssId)).sheets.map(s=>s.properties)){
+    if(t.title !== 'Transactions' && !/^Transactions_\d{4}$/.test(t.title)) continue;
+    let hdr;
+    try{ hdr = (await valuesGet(ssId, t.title + '!A1:' + colLetter(TXN_HEADERS.length + 2) + '1'))[0] || []; }catch(e){ continue; }
+    const ci = hdr.indexOf('CreatedAt');
+    if(ci > -1){
+      await batchUpdate(ssId, [{ deleteDimension:{ range:{ sheetId:t.sheetId, dimension:'COLUMNS', startIndex:ci, endIndex:ci+1 } } }]);
+    }
+  }
+  const currentYear = currentStoreYear();
+  if(Number(storeConfig.currentTxnYear) !== currentYear){
+    await archiveYear(ssId, currentYear);
+    storeConfig.currentTxnYear = currentYear;
+    await persistConfig();
+  }
+  invalidateTxnCache(); txnSheetsCache = [];
+}
+function findSheetTab(meta, title){
+  return (meta && meta.sheets || []).map(s=>s.properties).find(p=>p.title === title);
+}
+function partitionArchivableRows(liveVals, currentYear){
+  const dateCol = TXN_HEADERS.indexOf('Date');
+  const byYear = {};
+  const removeRows = [];
+  for(let i=1;i<liveVals.length;i++){
+    const d = new Date(liveVals[i][dateCol]);
+    const y = isNaN(d.getTime()) ? 0 : d.getFullYear();
+    if(y && y < currentYear){
+      (byYear[y] = byYear[y] || []).push(liveVals[i]);
+      removeRows.push(i);
+    }
+  }
+  return { byYear, removeRows };
+}
+async function appendYearArchives(ssId, byYear){
+  for(const y of Object.keys(byYear).map(Number).sort((a,b)=>a-b)){
+    const target = 'Transactions_' + y;
+    const meta = await spreadsheetMeta(ssId);
+    if(!findSheetTab(meta, target)){
+      await addSheet(ssId, target);
+      await valuesPut(ssId, target + '!A1:' + colLetter(TXN_HEADERS.length) + '1', [TXN_HEADERS]);
+    }
+    await valuesAppend(ssId, target, byYear[y]);
+  }
+}
+async function deleteLiveRows(ssId, removeRows){
+  const live = (await spreadsheetMeta(ssId)).sheets.map(s=>s.properties).find(p=>p.title === 'Transactions');
+  const reqs = removeRows.slice().sort((a,b)=>b-a).map(i=>({ deleteDimension:{ range:{ sheetId:live.sheetId, dimension:'ROWS', startIndex:i, endIndex:i+1 } } }));
+  await batchUpdate(ssId, reqs);
+}
+async function archiveYear(ssId, currentYear){
+  let liveVals;
+  try{ liveVals = await valuesGet(ssId, 'Transactions'); }catch(e){ return; }
+  const { byYear, removeRows } = partitionArchivableRows(liveVals, currentYear);
+  if(!removeRows.length) return;
+  await appendYearArchives(ssId, byYear);
+  await deleteLiveRows(ssId, removeRows);
+}
+
+/* ---------------- Contract: apiGet / apiPost ---------------- */
+
+function emptyFor(action){
+  switch(action){
+    case 'list': return { rows:[], count:0 };
+    case 'stockRegister': return { items:[] };
+    case 'filterOptions': return { agencies:[], workOrders:[], schemes:[] };
+    case 'meta': return { items:[], schemes:[], workOrderYears:[] };
+    case 'workOrderIndex': return { rows:[], note:'' };
+    case 'workOrders': return { rows:[] };
+    case 'dashboard': return { monthIssuedQty:0, monthReceivedQty:0, monthIssuedLines:0, monthReceivedLines:0, yearIssuedHrs:0, yearReceivedHrs:0, positiveStock:0, negativeStock:0, totalTxns:0, pendingVoucher:0, recent:[] };
+    default: return { error:'Unknown action: ' + action };
+  }
+}
+async function apiGet(action, params={}){
+  if(!isConnected()) return emptyFor(action);
+  await ensureToken();
+  switch(action){
+    case 'list': return actList(params);
+    case 'stockRegister': return actStockRegister(params);
+    case 'filterOptions': return actFilterOptions();
+    case 'meta': return actMeta();
+    case 'workOrderIndex': return actWorkOrderIndex(params);
+    case 'workOrders': return actWorkOrders(params);
+    case 'dashboard': return actDashboard();
+    default: return { error:'Unknown action: ' + action };
+  }
+}
+async function apiPost(action, body={}){
+  if(!isConnected()){ toast('Connect your store in Settings first'); throw new Error('not connected'); }
+  await ensureToken();
+  switch(action){
+    case 'addTransaction': return actAddTransaction(body);
+    case 'updateVoucher': return actUpdateVoucher(body);
+    default: throw new Error('Unknown action: ' + action);
+  }
+}
+
+/* ---------------- Connection / Settings ---------------- */
+
+function syncNamesFromConfig(){
+  if(!storeConfig) return;
+  STORE_NAME = storeConfig.storeName || 'Store Register';
+  OFFICE_NAME = storeConfig.officeName || '';
+  localStorage.setItem(STORE_NAME_KEY, STORE_NAME);
+  localStorage.setItem(OFFICE_NAME_KEY, OFFICE_NAME);
+  applyStoreName();
+}
+function fillSettingsFromConfig(){
+  if(!storeConfig) return;
+  $('storeName').value = storeConfig.storeName || '';
+  $('officeName').value = storeConfig.officeName || '';
+  $('storeCode').value = storeConfig.storeCode || '';
+  $('storeSpreadsheet').value = storeConfig.spreadsheetId || '';
+  $('storeMaster').value = storeConfig.masterSheetId || '';
+  $('storeWorkOrderMaster').value = storeConfig.workOrderMasterSheetId || '';
+}
+function defaultConfig(name){
+  return {
+    schemaVersion:1,
+    storeId:'store-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8),
+    storeName: name || 'Store Register',
+    officeName:'',
+    storeCode:'',
+    spreadsheetId:'',
+    masterSheetId:'',
+    workOrderMasterSheetId:'',
+    currentTxnYear:0,
+    hrCounters:{},
+    updatedAt:new Date().toISOString()
+  };
+}
+function slugify(s){
+  return String(s||'store').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'store';
+}
+async function connectStoreFromSettings(){
+  const cfg = Object.assign({}, storeConfig || defaultConfig(), {
+    storeName: $('storeName').value.trim() || 'Store Register',
+    officeName: $('officeName').value.trim(),
+    storeCode: $('storeCode').value.trim().toUpperCase(),
+    spreadsheetId: extractSheetId($('storeSpreadsheet').value.trim()),
+    masterSheetId: extractSheetId($('storeMaster').value.trim()),
+    workOrderMasterSheetId: extractSheetId($('storeWorkOrderMaster').value.trim())
+  });
+  if(!cfg.spreadsheetId) throw new Error('Paste the URL of your store spreadsheet.');
+  const { folder } = await listStoreConfigs();
+  if(!storeConfigFile){
+    storeConfigFile = { id:null, name: slugify(cfg.storeName) + '.json' };
+  }
+  if(!storeConfigFile.id){
+    const created = await createConfigFile(folder.id, storeConfigFile.name, cfg);
+    storeConfigFile.id = created.id;
+  }else{
+    await writeConfigFile(storeConfigFile.id, cfg);
+  }
+  localStorage.setItem(CONFIG_FILE_ID_KEY, storeConfigFile.id);
+  localStorage.setItem(CONFIG_FILE_NAME_KEY, storeConfigFile.name);
+  storeConfig = cfg;
+  cacheWrite(CONFIG_CACHE_KEY, cfg);
+  await ensureStore();
+  syncNamesFromConfig();
+  return true;
+}
+async function tryAutoConnect(){
+  const id = localStorage.getItem(CONFIG_FILE_ID_KEY);
+  if(!id) return false;
+  try{
+    await ensureToken();
+    const cfg = await readConfigFile(id);
+    storeConfigFile = { id, name: localStorage.getItem(CONFIG_FILE_NAME_KEY) || 'store.json' };
+    storeConfig = cfg;
+    cacheWrite(CONFIG_CACHE_KEY, cfg);
+    syncNamesFromConfig();
+    fillSettingsFromConfig();
+    await ensureStore();
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ---------------- Backups ---------------- */
+
+const B64_CHUNK = 0x8000; // bytes per chunk when converting a binary array to base64
+function u8ToB64(u8){
+  let s = '';
+  for(let i=0;i<u8.length;i+=B64_CHUNK) s += String.fromCharCode.apply(null, u8.subarray(i, i+B64_CHUNK));
+  return btoa(s);
+}
+function downloadBlob(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const XLSX_EXPORT_URL = '/files/{id}/export?mimeType=' + XLSX_MIME.replace(/\//g, '%2F'); // GOOGLE_API.drive is the base
+function utcDateStamp(){
+  return new Date().toISOString().slice(0, 10);
+}
+function backupStamp(){
+  const pad = n => String(n).padStart(2, '0');
+  const d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes());
+}
+function exportSpreadsheetXlsx(ssId){
+  return gFetch(GOOGLE_API.drive, XLSX_EXPORT_URL.replace('{id}', encodeURIComponent(ssId)), { method:'GET' });
+}
+async function saveLocalXlsx(){
+  if(!isConnected()) throw new Error('Connect your store first');
+  const res = await exportSpreadsheetXlsx(storeConfig.spreadsheetId);
+  const blob = await res.blob();
+  downloadBlob(blob, slugify(storeConfig.storeName || 'store') + '_' + utcDateStamp() + '.xlsx');
+}
+async function saveLocalCsv(){
+  if(!isConnected()) throw new Error('Connect your store first');
+  const rows = await getAllTxns();
+  const lines = [TXN_HEADERS.join(',')].concat(rows.map(r=>TXN_HEADERS.map(h=>{
+    const v = String(r[h]==null?'':r[h]);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+  }).join(',')));
+  downloadBlob(new Blob([lines.join('\r\n')], { type:'text/csv;charset=utf-8' }), slugify(storeConfig.storeName || 'store') + '_' + utcDateStamp() + '.csv');
+}
+async function resolveBackupFolder(){
+  const store = await resolveStoreFolder();
+  return ensureFolder('Backups', store.id);
+}
+async function pushTransactionsToDrive(){
+  if(!isConnected()) throw new Error('Connect your store first');
+  const folder = await resolveBackupFolder();
+  const name = slugify(storeConfig.storeName || 'store') + '_backup_' + backupStamp() + '.xlsx';
+  const res = await exportSpreadsheetXlsx(storeConfig.spreadsheetId);
+  const blob = await res.blob();
+  const bin = u8ToB64(new Uint8Array(await blob.arrayBuffer()));
+  const boundary = 'bdi_bk_' + Date.now().toString(36);
+  const meta = JSON.stringify({ name, parents:[folder.id], mimeType:XLSX_MIME });
+  const body =
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n' +
+    '--' + boundary + '\r\nContent-Type: ' + XLSX_MIME + '\r\n\r\n' + bin + '\r\n' +
+    '--' + boundary + '--';
+  const created = await driveApi('/files?uploadType=multipart', {
+    method:'POST',
+    headers:{ 'Content-Type':'multipart/related; boundary=' + boundary },
+    body
+  });
+  return { created:true, id: created.id, name };
+}
+
 /* ---------------- Settings ---------------- */
-$('scriptUrl').value = SCRIPT_URL;
 $('officeName').value = OFFICE_NAME;
 $('storeName').value = STORE_NAME;
-$('btnSaveStoreName').addEventListener('click', ()=>{
-  OFFICE_NAME = $('officeName').value.trim();
-  STORE_NAME = $('storeName').value.trim();
-  localStorage.setItem(OFFICE_NAME_KEY, OFFICE_NAME);
-  localStorage.setItem(STORE_NAME_KEY, STORE_NAME);
-  applyStoreName();
-  toast('Details saved');
-});
-$('btnSaveUrl').addEventListener('click', async ()=>{
-  const val = $('scriptUrl').value.trim();
-  SCRIPT_URL = val;
-  localStorage.setItem(CFG_KEY, val);
-  const status = $('settingsStatus');
-  status.textContent = 'Testing connection...';
+
+function setAuthUi(){
+  const signedIn = !!accessToken;
+  $('btnSignIn').classList.toggle('hidden', signedIn);
+  $('btnSignOut').classList.toggle('hidden', !signedIn);
+  const status = $('authStatus');
+  if(signedIn){
+    status.textContent = (authProfile && authProfile.email)
+      ? 'Signed in as ' + authProfile.email + (storeConfig ? ' · connected to ' + (storeConfig.storeName || 'your store') : '') + '.'
+      : 'Signed in. Connect your store below.';
+  }else{
+    status.textContent = 'Sign in with Google to read and write your store\'s spreadsheet directly — no server or Apps Script in between.';
+  }
+}
+// Drives a Settings-button flow that reports progress on a status element:
+// busy msg -> await task -> done (string or fn(result)) on success, fail prefix on error.
+// Returns true when the task succeeded.
+async function runStatusTask(id, busyMsg, task, opts){
+  const status = $(id);
+  status.textContent = busyMsg;
   try{
-    await loadMeta(true);
-    $('syncDot').classList.remove('off');
-    status.textContent = 'Connected. Item and scheme lists loaded.';
-    toast('Connected to your sheet');
-    loadDashboard();
-    prefetchAllWoIndexes();
+    const result = await task();
+    if(opts && opts.done) status.textContent = (typeof opts.done === 'function') ? opts.done(result) : opts.done;
+    return true;
   }catch(err){
-    $('syncDot').classList.add('off');
-    status.textContent = 'Could not connect: ' + err.message;
+    status.textContent = ((opts && opts.fail) || 'Operation failed') + ': ' + err.message;
+    return false;
+  }
+}
+$('btnSignIn').addEventListener('click', async ()=>{
+  try{
+    const profile = await authInteractively();
+    setAuthUi();
+    if(profile && profile.email) toast('Signed in as ' + profile.email);
+    const { files } = await listStoreConfigs();
+    if(files.length === 1){
+      storeConfigFile = { id: files[0].id, name: files[0].name };
+      localStorage.setItem(CONFIG_FILE_ID_KEY, files[0].id);
+      localStorage.setItem(CONFIG_FILE_NAME_KEY, files[0].name);
+      const cfg = await readConfigFile(files[0].id);
+      storeConfig = cfg;
+      cacheWrite(CONFIG_CACHE_KEY, cfg);
+      syncNamesFromConfig();
+      fillSettingsFromConfig();
+      await ensureStore();
+      $('syncDot').classList.remove('off');
+      $('storeStatus').textContent = 'Connected to ' + (cfg.storeName || 'your store') + '.';
+      toast('Store connected');
+      loadMeta();
+      prefetchAllWoIndexes();
+      loadDashboard();
+    }else if(files.length > 1){
+      $('storeStatus').textContent = 'Found ' + files.length + ' store config files under MAK-Projects/Store-Manager/. Pick one below and press "Save & connect".';
+    }
+  }catch(err){
+    $('storeStatus').textContent = 'Sign-in / connect failed: ' + err.message;
+  }
+});
+$('btnSignOut').addEventListener('click', ()=>{
+  signOut();
+  setAuthUi();
+  storeConfig = null;
+  storeConfigFile = null;
+  invalidateTxnCache(); txnSheetsCache = [];
+  $('syncDot').classList.add('off');
+  toast('Signed out');
+});
+$('btnSaveStore').addEventListener('click', async ()=>{
+  const ok = await runStatusTask('storeStatus', 'Saving config and connecting...', async ()=>{
+    if(!accessToken){
+      const profile = await authInteractively();
+      setAuthUi();
+      if(!profile) throw new Error('Google sign-in cancelled or failed.');
+    }
+    await connectStoreFromSettings();
+  }, {
+    done: () => 'Connected to ' + (storeConfig.storeName || 'your store') + '.',
+    fail: 'Could not connect'
+  });
+  if(ok){
+    $('syncDot').classList.remove('off');
+    setAuthUi();
+    toast('Store connected');
+    updateMetaCacheStatus();
+    loadMeta();
+    prefetchAllWoIndexes();
+    loadFilterOptions();
+    loadTransactedItems();
+    loadDashboard();
   }
 });
 $('btnRefreshMeta').addEventListener('click', async ()=>{
-  const status = $('settingsStatus');
-  status.textContent = 'Refreshing master data from your sheets...';
-  try{
+  await runStatusTask('storeStatus', 'Refreshing master data from your sheets...', async ()=>{
     await loadMeta(true);
-    status.textContent = 'Refreshing work orders and dropdowns...';
+    $('storeStatus').textContent = 'Refreshing work orders and dropdowns...';
     toast('Master data refreshed');
     updateMetaCacheStatus();
     await prefetchAllWoIndexes(true);
     await loadFilterOptions(true);
     await loadTransactedItems(true);
-    status.textContent = 'Master data and work orders refreshed.';
-  }catch(err){
-    status.textContent = 'Refresh failed: ' + err.message;
-  }
+  }, { done: 'Master data and work orders refreshed.', fail: 'Refresh failed' });
+});
+$('btnLocalXlsx').addEventListener('click', ()=>{
+  runStatusTask('backupStatus', 'Exporting spreadsheet...', saveLocalXlsx, {
+    done: 'Downloaded a local .xlsx copy.',
+    fail: 'Export failed'
+  });
+});
+$('btnLocalCsv').addEventListener('click', ()=>{
+  runStatusTask('backupStatus', 'Exporting transactions...', saveLocalCsv, {
+    done: 'Downloaded a local .csv copy.',
+    fail: 'Export failed'
+  });
+});
+$('btnDriveBackup').addEventListener('click', ()=>{
+  runStatusTask('backupStatus', 'Creating backup in Drive...', pushTransactionsToDrive, {
+    done: r => 'Backup saved: ' + r.name + ' in Drive/MAK-Projects/Store-Manager/Backups/.',
+    fail: 'Backup failed'
+  });
 });
 
 function loadMetaFromCache(){
@@ -1272,7 +2092,7 @@ function txnRowHTML(r, opts){
 
 /* ---------------- Dashboard ---------------- */
 async function loadDashboard(){
-  if(!SCRIPT_URL) return;
+  if(!isConnected()) return;
   try{
     const d = await apiGet('dashboard');
     const num = v => Number(v) > 0 ? Number(v) : 0;
@@ -1299,6 +2119,7 @@ const CACHE_SREG_KEY = 'bdi_cache_sreg_';
 const CACHE_SREG_TTL = 10*60e3;  // ledger is per-range; server cache backs it up
 let ledgerItems = [];       // items from stockRegister (full range)
 let ledgerOpen = null;      // expanded itemCode or null
+let regMode = 'ledger';     // 'ledger' (material position) | 'sheet' (register sheet)
 
 function todayStr(){
   const d = new Date();
@@ -1309,7 +2130,7 @@ function fmtQty(n){
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 function ledgerRangeKey(){
-  return CACHE_SREG_KEY + ($('ledFrom').value||'*') + '|' + ($('ledTo').value||'*');
+  return CACHE_SREG_KEY + ($('regFrom').value||'*') + '|' + ($('regTo').value||'*');
 }
 function filterLedgerItems(){
   const q = ($('ledSearch').value || '').trim().toLowerCase();
@@ -1327,7 +2148,7 @@ function reconcileLedgerOpen(){
   if(ledgerOpen && !ledgerItems.some(i=>i.itemCode===ledgerOpen)) ledgerOpen = null;
 }
 function updateLedgerMeta(){
-  const from = $('ledFrom').value, to = $('ledTo').value;
+  const from = $('regFrom').value, to = $('regTo').value;
   const range = (from?fmtDate(from):'Start') + ' — ' + (to?fmtDate(to):'Today');
   const total = ledgerItems.length;
   const shown = total ? filterLedgerItems().length : 0;
@@ -1365,6 +2186,33 @@ function ledgerDetailHTML(it){
     <div class="ldg-cards">${cards}</div>
   </div>`;
 }
+function ledgerRowHTML(it, max){
+  const open = ledgerOpen===it.itemCode;
+  const fullName = [it.itemCode, it.description, it.unit].filter(Boolean).join(' · ');
+  return `<div class="ldg-row ${open?'open':''}" data-code="${escapeHtml(it.itemCode)}">
+    <button type="button" class="ldg-id" data-open="1" title="${escapeHtml(fullName)}">
+      <span class="ldg-idline">
+        <span class="ldg-code">${escapeHtml(it.itemCode)}</span><span class="ldg-desc">${escapeHtml(it.description)}</span><span class="ldg-unit">${escapeHtml(it.unit)}</span>
+      </span>
+      <span class="chev">▾</span>
+    </button>
+    <div class="ldg-bars">
+      ${barCell('rcv', it.received, max)}
+      ${barCell('iss', it.issued, max)}
+      ${barCell('stk', it.closing, max)}
+    </div>
+    ${open ? ledgerDetailHTML(it) : ''}
+  </div>`;
+}
+function bindLedgerRowToggles(chart){
+  chart.querySelectorAll('.ldg-row').forEach(row=>{
+    row.querySelector('[data-open]').addEventListener('click', ()=>{
+      const code = row.dataset.code;
+      ledgerOpen = (ledgerOpen===code) ? null : code;
+      renderLedger();
+    });
+  });
+}
 function renderLedger(){
   const chart = $('ledgerChart');
   const visible = filterLedgerItems();
@@ -1381,40 +2229,12 @@ function renderLedger(){
   reconcileLedgerOpen();
   const items = visible.slice().sort((a,b)=> a.itemCode < b.itemCode ? -1 : 1);
   const max = items.reduce((m,it)=>Math.max(m, it.received, it.issued, Math.abs(it.closing)), 1);
-  chart.innerHTML = `
-    <div class="ldg-chart">
-      <div id="ldgRows">
-        ${items.map(it=>{
-          const open = ledgerOpen===it.itemCode;
-          const fullName = [it.itemCode, it.description, it.unit].filter(Boolean).join(' · ');
-          return `<div class="ldg-row ${open?'open':''}" data-code="${escapeHtml(it.itemCode)}">
-            <button type="button" class="ldg-id" data-open="1" title="${escapeHtml(fullName)}">
-              <span class="ldg-idline">
-                <span class="ldg-code">${escapeHtml(it.itemCode)}</span><span class="ldg-desc">${escapeHtml(it.description)}</span><span class="ldg-unit">${escapeHtml(it.unit)}</span>
-              </span>
-              <span class="chev">▾</span>
-            </button>
-            <div class="ldg-bars">
-              ${barCell('rcv', it.received, max)}
-              ${barCell('iss', it.issued, max)}
-              ${barCell('stk', it.closing, max)}
-            </div>
-            ${open ? ledgerDetailHTML(it) : ''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  chart.querySelectorAll('.ldg-row').forEach(row=>{
-    row.querySelector('[data-open]').addEventListener('click', ()=>{
-      const code = row.dataset.code;
-      ledgerOpen = (ledgerOpen===code) ? null : code;
-      renderLedger();
-    });
-  });
+  chart.innerHTML = `<div class="ldg-chart"><div id="ldgRows">${items.map(it=>ledgerRowHTML(it, max)).join('')}</div></div>`;
+  bindLedgerRowToggles(chart);
   updateLedgerMeta();
 }
 async function loadLedger(force){
-  if(!SCRIPT_URL) return;
+  if(!isConnected()) return;
   const key = ledgerRangeKey();
   if(!force){
     const c = cacheRead(key, CACHE_SREG_TTL);
@@ -1425,32 +2245,44 @@ async function loadLedger(force){
     }
   }
   try{
-    const data = await apiGet('stockRegister', { from: $('ledFrom').value, to: $('ledTo').value, refresh: force?'1':'' });
+    const data = await apiGet('stockRegister', { from: $('regFrom').value, to: $('regTo').value, refresh: force?'1':'' });
     cacheWrite(key, data);
     ledgerItems = data.items || [];
     renderLedger();
   }catch(err){ /* silent on ledger */ }
 }
+function setRegMode(mode){
+  regMode = mode;
+  document.querySelectorAll('[data-reg-mode]').forEach(b=>b.classList.toggle('active', b.dataset.regMode===mode));
+  document.querySelectorAll('[data-reg-mode-pane]').forEach(p=>p.classList.toggle('hidden', p.dataset.regModePane!==mode));
+}
 function openLedger(opts){
   opts = opts || {};
-  if(opts.from != null) $('ledFrom').value = opts.from;
-  if(opts.to != null) $('ledTo').value = opts.to;
+  if(opts.from != null) $('regFrom').value = opts.from;
+  if(opts.to != null) $('regTo').value = opts.to;
   $('ledItem').value = opts.item || '';
   $('ledPos').value = opts.position || '';
-  goView('ledger');
+  setRegMode('ledger');
+  goView('register');
   loadLedger();
 }
 (function initLedger(){
   const now = new Date();
-  $('ledTo').valueAsDate = now;
-  $('ledFrom').valueAsDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  $('regTo').valueAsDate = now;
+  $('regFrom').valueAsDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.querySelectorAll('[data-reg-mode]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      setRegMode(btn.dataset.regMode);
+      if(regMode === 'ledger') loadLedger();
+    });
+  });
   $('btnLedApply').addEventListener('click', ()=>loadLedger(true));
   $('btnLedClear').addEventListener('click', ()=>{
     $('ledSearch').value = '';
     $('ledItem').value = '';
     $('ledPos').value = '';
-    $('ledTo').valueAsDate = new Date();
-    $('ledFrom').valueAsDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    $('regTo').valueAsDate = new Date();
+    $('regFrom').valueAsDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     loadLedger(true);
   });
   $('ledSearch').addEventListener('input', renderLedger);
@@ -1740,57 +2572,43 @@ function revealRow(panel, row){
 }
 
 /* Index-leaf autocomplete — one dropdown family for schemes and items */
-function bindIndexLeaf(input, panel, cfg){
-  const open = on => {
-    panel.classList.toggle('open', on);
-    input.setAttribute('aria-expanded', on ? 'true' : 'false');
-  };
-  const close = () => open(false);
-  const render = () => {
-    panel.innerHTML = '';
-    const q = input.value.trim().toLowerCase();
-    const list = cfg.list();
-    if(!list.length){
-      panel.innerHTML = ixHead(cfg.title) + (cfg.emptyMsg
-        ? `<div class="ix-empty">${escapeHtml(cfg.emptyMsg)}</div>`
-        : `<div class="ix-empty">Nothing to choose from yet.</div>`);
-      open(true);
-      return;
-    }
-    let matches;
-    if(q){
-      matches = list
-        .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
-        .slice(0, SUGGEST_MAX);
-    } else if(cfg.openOnEmpty){
-      matches = list.slice(0, SUGGEST_MAX);
-    } else {
-      close(); return;
-    }
-    panel.innerHTML =
-      (cfg.anyLabel ? `
-        <div class="ix-row ix-any${q ? '' : ' active'}" data-code="">
-          <span class="ix-code">—</span>
-          <span class="ix-name">${escapeHtml(cfg.anyLabel)}</span>
-        </div>` : '') +
-      (matches.length
-        ? ixHead(cfg.title, matches.length) + matches.map(s=>`
-          <div class="ix-row" data-code="${escapeHtml(cfg.codeOf(s))}">
-            <span class="ix-code">${escapeHtml(cfg.codeOf(s))}</span>
-            <span class="ix-name">${escapeHtml(cfg.nameOf(s)||'')}</span>
-          </div>`).join('')
-        : ixHead(cfg.title) + `<div class="ix-empty">No ${cfg.kind} match “${escapeHtml(input.value.trim())}”. Check the code or leave it blank.</div>`);
+function renderLeafPanel(panel, input, cfg, open, close){
+  panel.innerHTML = '';
+  const q = input.value.trim().toLowerCase();
+  const list = cfg.list();
+  if(!list.length){
+    panel.innerHTML = ixHead(cfg.title) + (cfg.emptyMsg
+      ? `<div class="ix-empty">${escapeHtml(cfg.emptyMsg)}</div>`
+      : `<div class="ix-empty">Nothing to choose from yet.</div>`);
     open(true);
-  };
-  const select = row => { cfg.onSelect(row.dataset.code); close(); };
-  input.addEventListener('input', ()=>{ if(cfg.onInput) cfg.onInput(); render(); });
-  input.addEventListener('focus', render);
-  input.addEventListener('blur', ()=>setTimeout(close, IX_CLOSE_DELAY_MS));
-  panel.addEventListener('mousedown', (e)=>e.preventDefault());
-  panel.addEventListener('click', (e)=>{
-    const row = e.target.closest('.ix-row');
-    if(row) select(row);
-  });
+    return;
+  }
+  let matches;
+  if(q){
+    matches = list
+      .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
+      .slice(0, SUGGEST_MAX);
+  } else if(cfg.openOnEmpty){
+    matches = list.slice(0, SUGGEST_MAX);
+  } else {
+    close(); return;
+  }
+  panel.innerHTML =
+    (cfg.anyLabel ? `
+      <div class="ix-row ix-any${q ? '' : ' active'}" data-code="">
+        <span class="ix-code">—</span>
+        <span class="ix-name">${escapeHtml(cfg.anyLabel)}</span>
+      </div>` : '') +
+    (matches.length
+      ? ixHead(cfg.title, matches.length) + matches.map(s=>`
+        <div class="ix-row" data-code="${escapeHtml(cfg.codeOf(s))}">
+          <span class="ix-code">${escapeHtml(cfg.codeOf(s))}</span>
+          <span class="ix-name">${escapeHtml(cfg.nameOf(s)||'')}</span>
+        </div>`).join('')
+      : ixHead(cfg.title) + `<div class="ix-empty">No ${cfg.kind} match “${escapeHtml(input.value.trim())}”. Check the code or leave it blank.</div>`);
+  open(true);
+}
+function bindLeafKeyboard(panel, input, select, close){
   input.addEventListener('keydown', (e)=>{
     if(!panel.classList.contains('open')) return;
     const rows = Array.from(panel.querySelectorAll('.ix-row'));
@@ -1805,6 +2623,24 @@ function bindIndexLeaf(input, panel, cfg){
     rows[idx].classList.add('active');
     revealRow(panel, rows[idx]);
   });
+}
+function bindIndexLeaf(input, panel, cfg){
+  const open = on => {
+    panel.classList.toggle('open', on);
+    input.setAttribute('aria-expanded', on ? 'true' : 'false');
+  };
+  const close = () => open(false);
+  const render = () => renderLeafPanel(panel, input, cfg, open, close);
+  const select = row => { cfg.onSelect(row.dataset.code); close(); };
+  input.addEventListener('input', ()=>{ if(cfg.onInput) cfg.onInput(); render(); });
+  input.addEventListener('focus', render);
+  input.addEventListener('blur', ()=>setTimeout(close, IX_CLOSE_DELAY_MS));
+  panel.addEventListener('mousedown', (e)=>e.preventDefault());
+  panel.addEventListener('click', (e)=>{
+    const row = e.target.closest('.ix-row');
+    if(row) select(row);
+  });
+  bindLeafKeyboard(panel, input, select, close);
   return { close, refresh: render, isOpen: () => panel.classList.contains('open') };
 }
 
@@ -1883,10 +2719,20 @@ function renumberItemLines(){
   });
 }
 
+const UNSERVICEABLE_SUFFIX = ' (UNSERVICEABLE)';
+function stripUnserviceableSuffix(desc){
+  return String(desc==null?'':desc).replace(/\s*\(unserviceable\)/gi, '').trim();
+}
+function unserviceableDescription(desc, on){
+  const base = stripUnserviceableSuffix(desc).trim();
+  return on ? base + UNSERVICEABLE_SUFFIX : base;
+}
+
 function applyItemSelection(div, code){
   const match = META.items.find(i=>i.itemCode===code);
   if(match){
-    div.querySelector('.li-desc').value = match.description;
+    const chk = div.querySelector('.li-unserv-check');
+    div.querySelector('.li-desc').value = unserviceableDescription(match.description, !!(chk && chk.checked));
     div.querySelector('.li-unit').value = match.unit;
   }
 }
@@ -1912,10 +2758,19 @@ function addItemLine(){
     <div class="item-line-grid">
       <div><label for="li-qty-${id}">Quantity</label><input type="number" id="li-qty-${id}" name="qty" class="li-qty" step="any" min="0"></div>
       <div><label for="li-unit-${id}">Unit</label><input type="text" id="li-unit-${id}" name="unit" class="li-unit" placeholder="No(s). / Mtr."></div>
+      <label class="li-unserv" for="li-unserv-${id}">
+        <input type="checkbox" id="li-unserv-${id}" class="li-unserv-check">
+        <span>Unserviceable</span>
+      </label>
     </div>`;
   div.querySelector('.remove-line').addEventListener('click', ()=>{
     div.remove();
     renumberItemLines();
+  });
+  const unservChk = div.querySelector('.li-unserv-check');
+  unservChk.addEventListener('change', ()=>{
+    const desc = div.querySelector('.li-desc');
+    desc.value = unserviceableDescription(desc.value, unservChk.checked);
   });
   bindIndexLeaf(div.querySelector('.li-code'), div.querySelector('.ix-panel'), {
     title: 'Item index', kind: 'items',
@@ -1931,17 +2786,19 @@ function addItemLine(){
 $('btnAddLine').addEventListener('click', addItemLine);
 addItemLine();
 
-$('btnSubmit').addEventListener('click', async ()=>{
-  const lines = Array.from(document.querySelectorAll('.item-line')).map(div=>({
-    itemCode: div.querySelector('.li-code').value.trim(),
-    itemDescription: div.querySelector('.li-desc').value.trim(),
-    qty: div.querySelector('.li-qty').value,
-    unit: div.querySelector('.li-unit').value.trim()
-  })).filter(l=>l.itemCode && l.qty);
-
-  if(!lines.length){ toast('Add at least one item line with code & quantity'); return; }
-
-  const body = {
+function collectEntryLines(){
+  return Array.from(document.querySelectorAll('.item-line')).map(div=>{
+    const chk = div.querySelector('.li-unserv-check');
+    return {
+      itemCode: div.querySelector('.li-code').value.trim(),
+      itemDescription: unserviceableDescription(div.querySelector('.li-desc').value, !!(chk && chk.checked)),
+      qty: div.querySelector('.li-qty').value,
+      unit: div.querySelector('.li-unit').value.trim()
+    };
+  }).filter(l=>l.itemCode && l.qty);
+}
+function buildEntryBody(lines){
+  return {
     date: $('fDate').value,
     transactionType: currentType,
     schemeCode: $('fSchemeCode').value.trim(),
@@ -1954,29 +2811,38 @@ $('btnSubmit').addEventListener('click', async ()=>{
     voucherNo: $('fVoucherNo').value.trim(),
     items: lines
   };
+}
+function renderEntryConfirm(lines, res){
+  return `
+    <div class="confirm-banner ${currentType.toLowerCase()}">
+      Entry recorded &mdash; ${lines.length} item line(s)
+      <span class="num">${res.hrNo}${res.voucherNo ? ' &nbsp;|&nbsp; ' + res.voucherNo : ''}</span>
+      ${!res.voucherNo ? '<div class="note">No voucher no. yet — add it later from Reports.</div>' : ''}
+    </div>`;
+}
+function resetEntryForm(){
+  $('fSchemeCode').value='';
+  $('fSchemeName').value='';
+  schemePicker.close();
+  $('fAgency').value='';
+  $('fWorkOrder').value='';
+  $('fNameOfWork').value='';
+  $('fOfficeOrder').value='';
+  $('fChallan').value='';
+  $('fVoucherNo').value='';
+  $('itemLines').innerHTML='';
+  addItemLine();
+}
+$('btnSubmit').addEventListener('click', async ()=>{
+  const lines = collectEntryLines();
+  if(!lines.length){ toast('Add at least one item line with code & quantity'); return; }
   const btn = $('btnSubmit');
   btn.disabled = true; btn.textContent = 'Recording...';
   try{
-    const res = await apiPost('addTransaction', body);
-    $('entryConfirm').innerHTML = `
-      <div class="confirm-banner ${currentType.toLowerCase()}">
-        Entry recorded &mdash; ${lines.length} item line(s)
-        <span class="num">${res.hrNo}${res.voucherNo ? ' &nbsp;|&nbsp; ' + res.voucherNo : ''}</span>
-        ${!res.voucherNo ? '<div class="note">No voucher no. yet — add it later from Reports.</div>' : ''}
-      </div>`;
+    const res = await apiPost('addTransaction', buildEntryBody(lines));
+    $('entryConfirm').innerHTML = renderEntryConfirm(lines, res);
     toast('Entry recorded');
-    // reset form
-    $('fSchemeCode').value='';
-    $('fSchemeName').value='';
-    schemePicker.close();
-    $('fAgency').value='';
-    $('fWorkOrder').value='';
-    $('fNameOfWork').value='';
-    $('fOfficeOrder').value='';
-    $('fChallan').value='';
-    $('fVoucherNo').value='';
-    $('itemLines').innerHTML='';
-    addItemLine();
+    resetEntryForm();
     loadMeta();
     loadTransactedItems(true);
     loadFilterOptions(true);
@@ -2055,39 +2921,56 @@ function regTableHTML(type, rows, opts){
       <tbody>${rowsHTML || `<tr><td colspan="6" class="dim">No ${label.toLowerCase()} movements.</td></tr>`}</tbody>
     </table>`;
 }
-function regAgencySheet(rows, balances){
+function groupTransactions(rows, keyOf, makeGroup){
   const grouped = {};
   rows.forEach(r=>{
-    const key = String(r.AgencyDetails||'').trim().toLowerCase();
+    const key = keyOf(r);
     if(!key) return;
-    if(!grouped[key]) grouped[key] = { label: r.AgencyDetails.trim(), rcv: [], iss: [] };
+    if(!grouped[key]) grouped[key] = makeGroup(r);
     grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
   });
+  return grouped;
+}
+function cumulativeRunning(){
+  let total = 0;
+  return r => { total += Number(r.Qty)||0; return regNum(total); };
+}
+function cumulativePerMaterial(){
+  const totals = {};
+  return r => {
+    const m = String(r.ItemDescription||'').trim().toLowerCase();
+    totals[m] = (totals[m]||0)+(Number(r.Qty)||0);
+    return regNum(totals[m]);
+  };
+}
+function perItemTotals(group){
+  const byMat = {};
+  group.rcv.concat(group.iss).forEach(r=>{
+    const m = String(r.ItemDescription||'').trim().toLowerCase();
+    if(!byMat[m]) byMat[m] = { label: r.ItemDescription, rcv:0, iss:0 };
+    if(r.TransactionType==='Receipt') byMat[m].rcv += Number(r.Qty)||0;
+    else byMat[m].iss += Number(r.Qty)||0;
+  });
+  return byMat;
+}
+function materialSumRows(byMat){
+  return Object.keys(byMat).sort((a,b)=>byMat[a].label.localeCompare(byMat[b].label)).map(m=>{
+    const it = byMat[m];
+    return `<tr><td>${escapeHtml(it.label)}</td><td class="num rec">${regNum(it.rcv)}</td><td class="num iss">${regNum(it.iss)}</td></tr>`;
+  }).join('');
+}
+function regAgencySheet(rows, balances){
+  const grouped = groupTransactions(rows,
+    r=>String(r.AgencyDetails||'').trim().toLowerCase(),
+    r=>({ label: r.AgencyDetails.trim(), rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>grouped[a].label.localeCompare(grouped[b].label));
   const particulars = r=>[r.ItemDescription, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
-    const rcvCum = {}, issCum = {};
-    const rcvTbl = regTableHTML('Receipt', rcvRows, {
-      particulars,
-      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); rcvCum[m]=(rcvCum[m]||0)+(Number(r.Qty)||0); return regNum(rcvCum[m]); }
-    });
-    const issTbl = regTableHTML('Issue', issRows, {
-      particulars,
-      cumulative: r=>{ const m=String(r.ItemDescription||'').trim().toLowerCase(); issCum[m]=(issCum[m]||0)+(Number(r.Qty)||0); return regNum(issCum[m]); }
-    });
-    const byMat = {};
-    g.rcv.concat(g.iss).forEach(r=>{
-      const m = String(r.ItemDescription||'').trim().toLowerCase();
-      if(!byMat[m]) byMat[m] = { label: r.ItemDescription, rcv:0, iss:0 };
-      if(r.TransactionType==='Receipt') byMat[m].rcv += Number(r.Qty)||0;
-      else byMat[m].iss += Number(r.Qty)||0;
-    });
-    const sumRows = Object.keys(byMat).sort((a,b)=>byMat[a].label.localeCompare(byMat[b].label)).map(m=>{
-      const it = byMat[m];
-      return `<tr><td>${escapeHtml(it.label)}</td><td class="num rec">${regNum(it.rcv)}</td><td class="num iss">${regNum(it.iss)}</td></tr>`;
-    }).join('');
+    const rcvTbl = regTableHTML('Receipt', rcvRows, { particulars, cumulative: cumulativePerMaterial() });
+    const issTbl = regTableHTML('Issue', issRows, { particulars, cumulative: cumulativePerMaterial() });
+    const sumRows = materialSumRows(perItemTotals(g));
     return `<div class="reg-section">
       <h3>${i+1}. ${escapeHtml(g.label)}</h3>
       ${rcvTbl}${issTbl}
@@ -2102,27 +2985,16 @@ function regAgencySheet(rows, balances){
   return regIndexHTML(keys.map(k=>({ label: grouped[k].label }))) + sections.join('');
 }
 function regMaterialSheet(rows, balances){
-  const grouped = {};
-  rows.forEach(r=>{
-    const key = String(r.ItemCode||'').trim();
-    if(!key) return;
-    if(!grouped[key]) grouped[key] = { label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] };
-    grouped[key][r.TransactionType==='Receipt' ? 'rcv' : 'iss'].push(r);
-  });
+  const grouped = groupTransactions(rows,
+    r=>String(r.ItemCode||'').trim(),
+    r=>({ label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>(grouped[a].label||a).localeCompare(grouped[b].label||b));
   const particulars = r=>[r.AgencyDetails, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
-    let cum = 0, cumIss = 0;
-    const rcvTbl = regTableHTML('Receipt', rcvRows, {
-      particulars,
-      cumulative: r=>{ cum += Number(r.Qty)||0; return regNum(cum); }
-    });
-    const issTbl = regTableHTML('Issue', issRows, {
-      particulars,
-      cumulative: r=>{ cumIss += Number(r.Qty)||0; return regNum(cumIss); }
-    });
+    const rcvTbl = regTableHTML('Receipt', rcvRows, { particulars, cumulative: cumulativeRunning() });
+    const issTbl = regTableHTML('Issue', issRows, { particulars, cumulative: cumulativeRunning() });
     const bal = balances.find(b=>b.itemCode===k) || { opening:0, received:0, issued:0, closing:0 };
     return `<div class="reg-section">
       <h3>${i+1}. ${escapeHtml(g.label||k)} <span class="code">${escapeHtml(k)}${g.unit ? ' · '+escapeHtml(g.unit) : ''}</span></h3>
@@ -2216,7 +3088,7 @@ document.querySelectorAll('.rd-tab').forEach(btn=>{
   });
 });
 
-$('btnRdRun').addEventListener('click', async ()=>{
+function rdParams(){
   const params = {
     from: $('rdFrom').value,
     to: $('rdTo').value,
@@ -2225,42 +3097,51 @@ $('btnRdRun').addEventListener('click', async ()=>{
   if(rdScope==='agency') params.agency = $('rdAgency').value.trim();
   if(rdScope==='workOrder') params.workOrder = $('rdWorkOrder').value.trim();
   if(rdScope==='scheme') params.schemeCode = $('rdScheme').value.trim();
-  try{
-    const data = await apiGet('list', params);
-    lastRdRows = data.rows || [];
-    mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>r.AgencyDetails));
-    mergeRdLearned(CACHE_RD_WO_KEY, lastRdRows.map(r=>r.WorkOrderDetails));
-    refreshLeafPickers();
-    const wrap = $('rdResults');
-    wrap.classList.remove('hidden');
-    $('btnRdExport').classList.toggle('hidden', !lastRdRows.length);
-    const cap = { agency:'Agency', workOrder:'Work order', scheme:'Scheme' }[rdScope];
-    const scopeTxt = { agency:$('rdAgency').value.trim(), workOrder:$('rdWorkOrder').value.trim(), scheme:$('rdScheme').value.trim() }[rdScope] || 'All';
-    $('rdCaptionScope').textContent = cap + ' — ' + scopeTxt;
-    const from = $('rdFrom').value, to = $('rdTo').value;
-    $('rdCaptionPeriod').textContent = 'Period ' + (from || '—') + ' to ' + (to || '—') + ($('rdNoVoucher').checked ? ' · no voucher only' : '');
-    $('rdCount').textContent = lastRdRows.length + ' line(s)';
-    const body = $('rdBody');
-    if(!lastRdRows.length){
-      body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements match this scope in this period.</div>';
-      $('rdTotal').textContent = '';
-      return;
-    }
-    body.innerHTML = `<div class="rl-rows">${lastRdRows.map(r=>txnRowHTML(r, { showItem:true, showVoucher:true, showBadge:true })).join('')}</div>`;
-    const hrNos = new Set(lastRdRows.map(r=>r.HRNo).filter(Boolean));
-    $('rdTotal').innerHTML = `<span>Total ${lastRdRows.length} line(s) &middot; ${hrNos.size} HR no.${hrNos.size===1?'':'s'}</span><span>Carried forward</span>`;
-    document.querySelectorAll('.add-voucher-btn').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const hrNo = btn.dataset.hr;
-        const voucherNo = window.prompt('Voucher no. for ' + hrNo + ':');
-        if(!voucherNo) return;
-        try{
-          const res = await apiPost('updateVoucher', { hrNo, voucherNo: voucherNo.trim() });
-          toast('Updated ' + res.updated + ' line(s)');
-          $('btnRdRun').click();
-        }catch(err){ toast('Error: ' + err.message); }
-      });
+  return params;
+}
+function rdScopeLabel(){
+  return { agency:'Agency', workOrder:'Work order', scheme:'Scheme' }[rdScope];
+}
+function rdScopeValue(){
+  return { agency:$('rdAgency').value.trim(), workOrder:$('rdWorkOrder').value.trim(), scheme:$('rdScheme').value.trim() }[rdScope] || 'All';
+}
+function renderRdResults(data){
+  lastRdRows = data.rows || [];
+  mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>r.AgencyDetails));
+  mergeRdLearned(CACHE_RD_WO_KEY, lastRdRows.map(r=>r.WorkOrderDetails));
+  refreshLeafPickers();
+  const wrap = $('rdResults');
+  wrap.classList.remove('hidden');
+  $('btnRdExport').classList.toggle('hidden', !lastRdRows.length);
+  $('rdCaptionScope').textContent = rdScopeLabel() + ' — ' + rdScopeValue();
+  const from = $('rdFrom').value, to = $('rdTo').value;
+  $('rdCaptionPeriod').textContent = 'Period ' + (from || '—') + ' to ' + (to || '—') + ($('rdNoVoucher').checked ? ' · no voucher only' : '');
+  $('rdCount').textContent = lastRdRows.length + ' line(s)';
+  const body = $('rdBody');
+  if(!lastRdRows.length){
+    body.innerHTML = '<div class="empty-state"><div class="sig">—</div>No movements match this scope in this period.</div>';
+    $('rdTotal').textContent = '';
+    return;
+  }
+  body.innerHTML = `<div class="rl-rows">${lastRdRows.map(r=>txnRowHTML(r, { showItem:true, showVoucher:true, showBadge:true })).join('')}</div>`;
+  const hrNos = new Set(lastRdRows.map(r=>r.HRNo).filter(Boolean));
+  $('rdTotal').innerHTML = `<span>Total ${lastRdRows.length} line(s) &middot; ${hrNos.size} HR no.${hrNos.size===1?'':'s'}</span><span>Carried forward</span>`;
+  document.querySelectorAll('.add-voucher-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const hrNo = btn.dataset.hr;
+      const voucherNo = window.prompt('Voucher no. for ' + hrNo + ':');
+      if(!voucherNo) return;
+      try{
+        const res = await apiPost('updateVoucher', { hrNo, voucherNo: voucherNo.trim() });
+        toast('Updated ' + res.updated + ' line(s)');
+        $('btnRdRun').click();
+      }catch(err){ toast('Error: ' + err.message); }
     });
+  });
+}
+$('btnRdRun').addEventListener('click', async ()=>{
+  try{
+    renderRdResults(await apiGet('list', rdParams()));
   }catch(err){ toast('Error: ' + err.message); }
 });
 
@@ -2286,15 +3167,18 @@ populateYearSelect();
 updateMetaCacheStatus();
 loadTransactedItems();
 loadFilterOptions();
-if(SCRIPT_URL){
-  prefetchAllWoIndexes();
-  loadMeta().then(()=>{
+tryAutoConnect().then(ok=>{
+  if(ok){
     $('syncDot').classList.remove('off');
+    setAuthUi();
     updateMetaCacheStatus();
-    loadDashboard();
+    loadMeta();
     prefetchAllWoIndexes();
-  }).catch(()=>{});
-}
+    loadFilterOptions();
+    loadTransactedItems();
+    loadDashboard();
+  }
+});
 </script>
 </body>
 </html>
