@@ -227,56 +227,61 @@ button:focus-visible, a:focus-visible{
 .item-line-head .idx{font-family:var(--stamp); font-size:12px; color:var(--margin); letter-spacing:.04em; text-transform:uppercase;}
 .item-line .remove-line{background:none; border:none; color:var(--ink-mut); font-size:20px; line-height:1; padding:0 4px; cursor:pointer;}
 .item-line .remove-line:hover{color:var(--margin);}
-.item-line-grid{display:grid; grid-template-columns:1fr 1.5fr; gap:12px; margin-top:10px;}
+.item-line-grid{display:grid; grid-template-columns:1fr auto; gap:12px; margin-top:10px; align-items:end;}
 .item-line-grid label{margin-top:0;}
 .item-line-head + .field-wrap label{margin-top:8px;}
 .item-line .li-unserv{
-  grid-column:1 / -1; margin-top:12px; width:fit-content;
+  width:fit-content; margin:0 0 5px;
   display:inline-flex; align-items:center; gap:7px;
   font-family:var(--stamp); font-size:11px; letter-spacing:.09em; text-transform:uppercase;
   color:var(--ink-mut); cursor:pointer; user-select:none;
 }
 .item-line .li-unserv input{accent-color:var(--margin); width:14px; height:14px; cursor:pointer;}
 
-/* Unit picker — slash-separated unit stamps; the picked unit stands clean, the rest get penned through */
+/* Unit — four filed index tabs on the binder rule; the chosen tab is pulled to the front */
+.li-unit-field{margin-top:14px;}
+.li-unit-field label{margin:0 0 8px;}
 .li-unit-box{display:grid; position:relative;}
 .li-unit-list,.li-unit{grid-area:1/1;}
 .li-unit-list{
-  z-index:1; display:flex; align-items:baseline; white-space:nowrap;
-  border-bottom:1.5px solid var(--rule-strong);
-  max-height:44px; overflow:hidden; opacity:1;
+  z-index:1; display:flex; gap:5px; align-items:flex-end;
+  padding:0 2px; border-bottom:2px solid var(--ink);
+  max-height:64px; overflow:hidden; opacity:1;
   transition:max-height .22s ease, opacity .18s ease;
 }
 .li-unit-opt{
-  appearance:none; border:none; background:none; cursor:pointer; border-radius:0;
-  font-family:var(--body); font-size:13px; line-height:1.2; color:var(--ink-mut);
-  padding:11px 0 10px; text-align:left; position:relative;
-  border-bottom:2px solid transparent;
+  flex:1 1 0; min-width:0; position:relative; appearance:none; border:none; cursor:pointer;
+  font-family:var(--stamp); font-size:12px; line-height:1.2; color:var(--ink-mut);
+  background:#E9E1C7; white-space:nowrap; text-align:center;
+  padding:11px 8px 12px; margin-bottom:-2px;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 8px), 50% 100%, 0 calc(100% - 8px));
   transition:color .12s ease;
 }
-.li-unit-opt + .li-unit-opt::before{
-  content:'/'; margin:0 1px; color:var(--rule-strong); pointer-events:none;
-}
-.li-unit-opt::after{
-  content:''; position:absolute; left:-3px; right:-3px; top:calc(50% - .75px);
-  height:1.5px; background:var(--margin);
-  transform:scaleX(0); transform-origin:left center;
-  transition:transform .2s ease;
-}
-.li-unit-opt.struck{color:var(--rule-strong);}
-.li-unit-opt.struck::after{transform:scaleX(1);}
-.li-unit-opt:nth-child(2).struck::after{transition-delay:.03s;}
-.li-unit-opt:nth-child(3).struck::after{transition-delay:.07s;}
-.li-unit-opt:nth-child(4).struck::after{transition-delay:.11s;}
 .li-unit-opt:hover{color:var(--ink);}
-.li-unit-opt:hover.struck{color:var(--ink-mut);}
-.li-unit-opt.active{color:var(--ink); font-weight:600; border-bottom-color:var(--margin);}
-.li-unit-opt.other{border-bottom-style:dashed;}
+.li-unit-opt.other{text-decoration:underline dotted var(--ink-mut); text-underline-offset:4px;}
+.li-unit-opt.active{
+  background:transparent; color:var(--ink);
+  text-decoration:underline; text-decoration-color:var(--margin);
+  text-decoration-thickness:2px; text-underline-offset:4px;
+}
+.li-unit-opt.active::before{
+  content:''; position:absolute; inset:0; z-index:-2; background:var(--ink);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 8px), 50% 100%, 0 calc(100% - 8px));
+  filter:url(#inkWobbleOuter);
+}
+.li-unit-opt.active::after{
+  content:''; position:absolute; inset:3px; z-index:-1; background:var(--paper);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 8px), 50% 100%, 0 calc(100% - 8px));
+  filter:url(#inkWobbleInner);
+}
 .li-unit-list.is-leaving{max-height:0; opacity:0; border-bottom-color:transparent; pointer-events:none;}
 .li-unit{opacity:0; pointer-events:none; transition:opacity .18s ease .05s;}
 .li-unit.is-shown{opacity:1; pointer-events:auto;}
+@media (max-width:360px){
+  .li-unit-opt{font-size:11px; padding:11px 5px 12px;}
+}
 @media (prefers-reduced-motion: reduce){
-  .li-unit-list,.li-unit,.li-unit-opt::after{transition:none;}
+  .li-unit-list,.li-unit{transition:none;}
 }
 
 .add-line-btn{
@@ -558,10 +563,10 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .rd-tab{
   position:relative; z-index:0; appearance:none; border:none; cursor:pointer;
   font-family:var(--disp); font-weight:600; font-size:12.5px; letter-spacing:.11em;
-  text-transform:uppercase; color:var(--ink-mut); background:var(--tab);
+  text-transform:uppercase; color:var(--ink-mut); background:transparent;
   padding:9px 17px 10px; margin-bottom:-2px;
   clip-path:polygon(0 0, 100% 0, 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px));
-  transition:color .15s, background .15s;
+  transition:color .15s;
 }
 .rd-tab:hover{color:var(--ink);}
 .rd-tab.active{background:transparent; color:var(--ink);}
@@ -3033,22 +3038,22 @@ function addItemLine(){
     <input type="text" id="li-desc-${id}" name="itemDescription" class="li-desc" placeholder="Item description">
     <div class="item-line-grid">
       <div><label for="li-qty-${id}">Quantity</label><input type="number" id="li-qty-${id}" name="qty" class="li-qty" step="any" min="0"></div>
-      <div>
-        <label id="li-unit-label-${id}">Unit</label>
-        <div class="li-unit-box" role="group" aria-labelledby="li-unit-label-${id}">
-          <div class="li-unit-list" role="listbox" aria-label="Unit">
-            <button type="button" class="li-unit-opt" role="option" data-unit="No(s)." aria-selected="false">No(s).</button>
-            <button type="button" class="li-unit-opt" role="option" data-unit="Mtr." aria-selected="false">Mtr.</button>
-            <button type="button" class="li-unit-opt" role="option" data-unit="Kg." aria-selected="false">Kg.</button>
-            <button type="button" class="li-unit-opt other" role="option" data-unit="Other" aria-selected="false">Other</button>
-          </div>
-          <input type="text" id="li-unit-${id}" name="unit" class="li-unit" placeholder="Type a unit" tabindex="-1">
-        </div>
-      </div>
       <label class="li-unserv" for="li-unserv-${id}">
         <input type="checkbox" id="li-unserv-${id}" class="li-unserv-check">
         <span>Unserviceable</span>
       </label>
+    </div>
+    <div class="li-unit-field">
+      <label id="li-unit-label-${id}">Unit</label>
+      <div class="li-unit-box" role="group" aria-labelledby="li-unit-label-${id}">
+        <div class="li-unit-list" role="listbox" aria-label="Unit">
+          <button type="button" class="li-unit-opt" role="option" data-unit="No(s)." aria-selected="false">No(s).</button>
+          <button type="button" class="li-unit-opt" role="option" data-unit="Mtr." aria-selected="false">Mtr.</button>
+          <button type="button" class="li-unit-opt" role="option" data-unit="Kg." aria-selected="false">Kg.</button>
+          <button type="button" class="li-unit-opt other" role="option" data-unit="Other" aria-selected="false">Other</button>
+        </div>
+        <input type="text" id="li-unit-${id}" name="unit" class="li-unit" placeholder="Type a unit" tabindex="-1">
+      </div>
     </div>`;
   div.querySelector('.remove-line').addEventListener('click', ()=>{
     div.remove();
