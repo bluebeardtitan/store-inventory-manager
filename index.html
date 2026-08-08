@@ -351,7 +351,6 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
 /* Stock ledger — a ruled register sheet */
 .ledger{background:var(--paper); border-color:#DDD2B2;}
-.ledger-head{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;}
 .ledger-stamp{font-family:var(--stamp); color:var(--margin); font-size:20px; letter-spacing:.05em; text-transform:uppercase;}
 .ledger-filter{margin-top:14px;}
 .lf-search{position:relative;}
@@ -445,16 +444,70 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .filter-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 
 /* Register generator — scope stamps */
-.reg-scope,.reg-mode{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:14px 0 6px;}
-.reg-scope-btn,.reg-mode-btn{
+.reg-scope{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:14px 0 6px;}
+.reg-scope-btn{
   padding:11px 6px 9px; border:1.5px solid var(--rule-strong); border-radius:3px;
   background:transparent; color:var(--ink-mut); font-family:var(--stamp); font-size:13px;
   text-transform:uppercase; letter-spacing:.08em; cursor:pointer;
   transition:background .15s, color .15s, border-color .15s, transform .12s;
 }
-.reg-scope-btn:hover,.reg-mode-btn:hover{border-color:var(--ink); color:var(--ink);}
-.reg-scope-btn:active,.reg-mode-btn:active{transform:translateY(1px);}
-.reg-scope-btn.active,.reg-mode-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
+.reg-scope-btn:hover{border-color:var(--ink); color:var(--ink);}
+.reg-scope-btn:active{transform:translateY(1px);}
+.reg-scope-btn.active{background:var(--ink); border-color:var(--ink); color:var(--sheet);}
+
+/* Stock register modes — two filed index-divider tabs set on the binder rule */
+.reg-mode{
+  display:flex; gap:8px; align-items:flex-end;
+  margin:18px 0 0; padding:0 3px;
+  border-bottom:2px solid var(--ink);
+}
+.reg-mode-btn{
+  position:relative; z-index:0; appearance:none; border:none; cursor:pointer;
+  display:flex; align-items:flex-start; gap:10px; min-height:46px;
+  padding:11px 14px 12px 11px; margin-bottom:-2px;
+  text-align:left; background:#E9E1C7;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 12px), 50% 100%, 0 calc(100% - 12px));
+  transition:background .16s ease, color .16s ease;
+}
+.reg-mode-btn:focus-visible{outline:2px solid var(--margin); outline-offset:2px;}
+.reg-mode-btn .rm-icon{
+  flex-shrink:0; width:22px; height:22px; margin-top:1px;
+  color:var(--ink-mut); transition:color .16s ease;
+}
+.reg-mode-btn .rm-txt{display:flex; flex-direction:column; min-width:0;}
+.reg-mode-btn .rm-label{
+  display:block; font-family:var(--disp); font-weight:600;
+  font-size:13.5px; line-height:1.05; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--ink-mut); white-space:nowrap; transition:color .16s ease;
+}
+.reg-mode-btn .rm-caption{
+  display:block; margin-top:4px; font-family:var(--body);
+  font-size:10.5px; letter-spacing:.02em; line-height:1.2;
+  color:var(--ink-mut); opacity:.85;
+}
+.reg-mode-btn:hover .rm-label,
+.reg-mode-btn:hover .rm-icon{color:var(--ink);}
+.reg-mode-btn.active{background:var(--paper);}
+.reg-mode-btn.active .rm-label{color:var(--ink);}
+.reg-mode-btn.active .rm-icon{color:var(--margin);}
+.reg-mode-btn.active .rm-caption{opacity:1;}
+.reg-mode-btn.active::before{
+  content:''; position:absolute; inset:0; z-index:-2; background:var(--ink);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 12px), 50% 100%, 0 calc(100% - 12px));
+  filter:url(#inkWobbleOuter);
+}
+.reg-mode-btn.active::after{
+  content:''; position:absolute; inset:3px; z-index:-1; background:var(--paper);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 12px), 50% 100%, 0 calc(100% - 12px));
+  filter:url(#inkWobbleInner);
+}
+@media (max-width:420px){
+  .reg-mode{gap:6px;}
+  .reg-mode-btn{padding:10px 11px 11px 9px; gap:7px;}
+  .reg-mode-btn .rm-icon{width:18px; height:18px;}
+  .reg-mode-btn .rm-label{font-size:12px; letter-spacing:.06em;}
+  .reg-mode-btn .rm-caption{display:none;}
+}
 /* Movement reports — the register's index leaves, pulled out on the dashboard */
 .rd-sub{margin:0 0 14px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
 .rd-tabs{
@@ -854,8 +907,20 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   <div class="card">
     <h3>Stock register</h3>
     <div class="reg-mode" role="tablist" aria-label="Stock register mode">
-      <button type="button" class="reg-mode-btn active" data-reg-mode="ledger" role="tab" aria-selected="true">Material position</button>
-      <button type="button" class="reg-mode-btn" data-reg-mode="sheet" role="tab" aria-selected="false">Register sheet</button>
+      <button type="button" class="reg-mode-btn active" data-reg-mode="ledger" role="tab" aria-selected="true" aria-controls="pane-ledger">
+        <svg class="rm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 19V10M12 19V5M19 19v-6"/><path d="M3 19h18"/></svg>
+        <span class="rm-txt">
+          <span class="rm-label">Material position</span>
+          <span class="rm-caption">balances &amp; movements</span>
+        </span>
+      </button>
+      <button type="button" class="reg-mode-btn" data-reg-mode="sheet" role="tab" aria-selected="false" aria-controls="pane-sheet">
+        <svg class="rm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 11h6M10 15h6"/></svg>
+        <span class="rm-txt">
+          <span class="rm-label">Register sheet</span>
+          <span class="rm-caption">print-ready report</span>
+        </span>
+      </button>
     </div>
     <div class="filter-grid">
       <div><label for="regFrom">From</label><input type="date" id="regFrom" name="regFrom"></div>
@@ -863,10 +928,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     </div>
 
     <!-- Material position (ledger) -->
-    <div class="ledger" data-reg-mode-pane="ledger">
-      <div class="ledger-head">
-        <span class="ledger-stamp">Stock ledger</span>
-      </div>
+    <div class="ledger" id="pane-ledger" data-reg-mode-pane="ledger">
       <div class="ledger-filter">
         <div class="lf-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
@@ -895,7 +957,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     </div>
 
     <!-- Register sheet (print-ready report) -->
-    <div data-reg-mode-pane="sheet" class="hidden">
+    <div id="pane-sheet" data-reg-mode-pane="sheet" class="hidden">
       <div class="reg-scope" role="tablist" aria-label="Register grouping">
         <button type="button" class="reg-scope-btn active" data-reg-view="agency" role="tab" aria-selected="true">Agency wise</button>
         <button type="button" class="reg-scope-btn" data-reg-view="material" role="tab" aria-selected="false">Material wise</button>
@@ -2352,7 +2414,11 @@ async function loadLedger(force){
 }
 function setRegMode(mode){
   regMode = mode;
-  document.querySelectorAll('[data-reg-mode]').forEach(b=>b.classList.toggle('active', b.dataset.regMode===mode));
+  document.querySelectorAll('[data-reg-mode]').forEach(b=>{
+    const on = b.dataset.regMode===mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
   document.querySelectorAll('[data-reg-mode-pane]').forEach(p=>p.classList.toggle('hidden', p.dataset.regModePane!==mode));
 }
 function openLedger(opts){
