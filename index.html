@@ -227,7 +227,7 @@ button:focus-visible, a:focus-visible{
 .item-line-head .idx{font-family:var(--stamp); font-size:12px; color:var(--margin); letter-spacing:.04em; text-transform:uppercase;}
 .item-line .remove-line{background:none; border:none; color:var(--ink-mut); font-size:20px; line-height:1; padding:0 4px; cursor:pointer;}
 .item-line .remove-line:hover{color:var(--margin);}
-.item-line-grid{display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-top:10px;}
+.item-line-grid{display:grid; grid-template-columns:1fr 1.5fr; gap:12px; margin-top:10px;}
 .item-line-grid label{margin-top:0;}
 .item-line-head + .field-wrap label{margin-top:8px;}
 .item-line .li-unserv{
@@ -238,31 +238,45 @@ button:focus-visible, a:focus-visible{
 }
 .item-line .li-unserv input{accent-color:var(--margin); width:14px; height:14px; cursor:pointer;}
 
-/* Unit picker — standard unit stamps that morph into a text input for "Other" */
+/* Unit picker — slash-separated unit stamps; the picked unit stands clean, the rest get penned through */
 .li-unit-box{display:grid; position:relative;}
 .li-unit-list,.li-unit{grid-area:1/1;}
 .li-unit-list{
-  z-index:1; display:grid; grid-template-columns:1fr 1fr;
+  z-index:1; display:flex; align-items:baseline; white-space:nowrap;
   border-bottom:1.5px solid var(--rule-strong);
-  max-height:70px; overflow:hidden; opacity:1;
+  max-height:44px; overflow:hidden; opacity:1;
   transition:max-height .22s ease, opacity .18s ease;
 }
 .li-unit-opt{
   appearance:none; border:none; background:none; cursor:pointer; border-radius:0;
-  font-family:var(--body); font-size:12px; line-height:1.25; color:var(--ink-mut);
-  padding:8px 4px 7px; text-align:left;
+  font-family:var(--body); font-size:13px; line-height:1.2; color:var(--ink-mut);
+  padding:11px 0 10px; text-align:left; position:relative;
   border-bottom:2px solid transparent;
   transition:color .12s ease;
 }
-.li-unit-opt:nth-child(odd){border-right:1px dotted var(--rule);}
+.li-unit-opt + .li-unit-opt::before{
+  content:'/'; margin:0 1px; color:var(--rule-strong); pointer-events:none;
+}
+.li-unit-opt::after{
+  content:''; position:absolute; left:-3px; right:-3px; top:calc(50% - .75px);
+  height:1.5px; background:var(--margin);
+  transform:scaleX(0); transform-origin:left center;
+  transition:transform .2s ease;
+}
+.li-unit-opt.struck{color:var(--rule-strong);}
+.li-unit-opt.struck::after{transform:scaleX(1);}
+.li-unit-opt:nth-child(2).struck::after{transition-delay:.03s;}
+.li-unit-opt:nth-child(3).struck::after{transition-delay:.07s;}
+.li-unit-opt:nth-child(4).struck::after{transition-delay:.11s;}
 .li-unit-opt:hover{color:var(--ink);}
+.li-unit-opt:hover.struck{color:var(--ink-mut);}
 .li-unit-opt.active{color:var(--ink); font-weight:600; border-bottom-color:var(--margin);}
 .li-unit-opt.other{border-bottom-style:dashed;}
 .li-unit-list.is-leaving{max-height:0; opacity:0; border-bottom-color:transparent; pointer-events:none;}
 .li-unit{opacity:0; pointer-events:none; transition:opacity .18s ease .05s;}
 .li-unit.is-shown{opacity:1; pointer-events:auto;}
 @media (prefers-reduced-motion: reduce){
-  .li-unit-list,.li-unit{transition:none;}
+  .li-unit-list,.li-unit,.li-unit-opt::after{transition:none;}
 }
 
 .add-line-btn{
@@ -2927,13 +2941,18 @@ function liUnitSet(box, value){
   const list = box.querySelector('.li-unit-list');
   const input = box.querySelector('.li-unit');
   const opts = Array.from(list.querySelectorAll('.li-unit-opt'));
-  opts.forEach(o=>o.classList.toggle('active', o.dataset.unit===value));
   if(value && !UNIT_OPTIONS.includes(value)){
+    opts.forEach(o=>o.classList.remove('active','struck'));
     input.value = value;
     list.classList.add('is-leaving');
     input.classList.add('is-shown');
     input.tabIndex = 0;
   }else{
+    opts.forEach(o=>{
+      const sel = o.dataset.unit===value;
+      o.classList.toggle('active', sel);
+      o.classList.toggle('struck', !sel && !!value);
+    });
     input.value = '';
     list.classList.remove('is-leaving');
     input.classList.remove('is-shown');
@@ -2956,14 +2975,14 @@ function bindUnitPicker(div){
   opts.forEach((o, i)=>{
     o.addEventListener('click', ()=>{
       if(o.dataset.unit === 'Other'){
-        opts.forEach(x=>x.classList.remove('active'));
+        opts.forEach(x=>x.classList.remove('active','struck'));
         input.value = '';
         list.classList.add('is-leaving');
         input.classList.add('is-shown');
         input.tabIndex = 0;
         input.focus();
       }else{
-        opts.forEach(x=>x.classList.toggle('active', x===o));
+        opts.forEach(x=>{ const sel = x===o; x.classList.toggle('active', sel); x.classList.toggle('struck', !sel); });
         input.value = '';
       }
     });
