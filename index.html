@@ -238,6 +238,33 @@ button:focus-visible, a:focus-visible{
 }
 .item-line .li-unserv input{accent-color:var(--margin); width:14px; height:14px; cursor:pointer;}
 
+/* Unit picker — standard unit stamps that morph into a text input for "Other" */
+.li-unit-box{display:grid; position:relative;}
+.li-unit-list,.li-unit{grid-area:1/1;}
+.li-unit-list{
+  z-index:1; display:grid; grid-template-columns:1fr 1fr;
+  border-bottom:1.5px solid var(--rule-strong);
+  max-height:70px; overflow:hidden; opacity:1;
+  transition:max-height .22s ease, opacity .18s ease;
+}
+.li-unit-opt{
+  appearance:none; border:none; background:none; cursor:pointer; border-radius:0;
+  font-family:var(--body); font-size:12px; line-height:1.25; color:var(--ink-mut);
+  padding:8px 4px 7px; text-align:left;
+  border-bottom:2px solid transparent;
+  transition:color .12s ease;
+}
+.li-unit-opt:nth-child(odd){border-right:1px dotted var(--rule);}
+.li-unit-opt:hover{color:var(--ink);}
+.li-unit-opt.active{color:var(--ink); font-weight:600; border-bottom-color:var(--margin);}
+.li-unit-opt.other{border-bottom-style:dashed;}
+.li-unit-list.is-leaving{max-height:0; opacity:0; border-bottom-color:transparent; pointer-events:none;}
+.li-unit{opacity:0; pointer-events:none; transition:opacity .18s ease .05s;}
+.li-unit.is-shown{opacity:1; pointer-events:auto;}
+@media (prefers-reduced-motion: reduce){
+  .li-unit-list,.li-unit{transition:none;}
+}
+
 .add-line-btn{
   width:100%; padding:11px;
   border:1.5px dashed var(--rule-strong); border-radius:3px; background:transparent;
@@ -2893,12 +2920,77 @@ function unserviceableDescription(desc, on){
   return on ? base + UNSERVICEABLE_SUFFIX : base;
 }
 
+const UNIT_OPTIONS = ['No(s).','Mtr.','Kg.','Other'];
+function liUnitBox(div){ return div.querySelector('.li-unit-box'); }
+function liUnitSet(box, value){
+  value = (value==null?'':String(value)).trim();
+  const list = box.querySelector('.li-unit-list');
+  const input = box.querySelector('.li-unit');
+  const opts = Array.from(list.querySelectorAll('.li-unit-opt'));
+  opts.forEach(o=>o.classList.toggle('active', o.dataset.unit===value));
+  if(value && !UNIT_OPTIONS.includes(value)){
+    input.value = value;
+    list.classList.add('is-leaving');
+    input.classList.add('is-shown');
+    input.tabIndex = 0;
+  }else{
+    input.value = '';
+    list.classList.remove('is-leaving');
+    input.classList.remove('is-shown');
+    input.tabIndex = -1;
+  }
+}
+function liUnitValue(div){
+  const box = liUnitBox(div);
+  if(box.querySelector('.li-unit-list').classList.contains('is-leaving')){
+    return box.querySelector('.li-unit').value.trim();
+  }
+  const act = box.querySelector('.li-unit-opt.active');
+  return act ? act.dataset.unit : '';
+}
+function bindUnitPicker(div){
+  const box = liUnitBox(div);
+  const list = box.querySelector('.li-unit-list');
+  const input = box.querySelector('.li-unit');
+  const opts = Array.from(list.querySelectorAll('.li-unit-opt'));
+  opts.forEach((o, i)=>{
+    o.addEventListener('click', ()=>{
+      if(o.dataset.unit === 'Other'){
+        opts.forEach(x=>x.classList.remove('active'));
+        input.value = '';
+        list.classList.add('is-leaving');
+        input.classList.add('is-shown');
+        input.tabIndex = 0;
+        input.focus();
+      }else{
+        opts.forEach(x=>x.classList.toggle('active', x===o));
+        input.value = '';
+      }
+    });
+    o.addEventListener('keydown', (e)=>{
+      if(e.key === 'ArrowRight' || e.key === 'ArrowDown'){
+        e.preventDefault(); opts[Math.min(i+1, opts.length-1)].focus();
+      }else if(e.key === 'ArrowLeft' || e.key === 'ArrowUp'){
+        e.preventDefault(); opts[Math.max(i-1, 0)].focus();
+      }else if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault(); o.click();
+      }
+    });
+  });
+  input.addEventListener('blur', ()=>{
+    if(!input.value.trim()) liUnitSet(box, '');
+  });
+  input.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && !input.value.trim()){ e.preventDefault(); liUnitSet(box, ''); }
+  });
+}
+
 function applyItemSelection(div, code){
   const match = META.items.find(i=>i.itemCode===code);
   if(match){
     const chk = div.querySelector('.li-unserv-check');
     div.querySelector('.li-desc').value = unserviceableDescription(match.description, !!(chk && chk.checked));
-    div.querySelector('.li-unit').value = match.unit;
+    liUnitSet(liUnitBox(div), match.unit);
   }
 }
 
@@ -2922,7 +3014,18 @@ function addItemLine(){
     <input type="text" id="li-desc-${id}" name="itemDescription" class="li-desc" placeholder="Item description">
     <div class="item-line-grid">
       <div><label for="li-qty-${id}">Quantity</label><input type="number" id="li-qty-${id}" name="qty" class="li-qty" step="any" min="0"></div>
-      <div><label for="li-unit-${id}">Unit</label><input type="text" id="li-unit-${id}" name="unit" class="li-unit" placeholder="No(s). / Mtr."></div>
+      <div>
+        <label id="li-unit-label-${id}">Unit</label>
+        <div class="li-unit-box" role="group" aria-labelledby="li-unit-label-${id}">
+          <div class="li-unit-list" role="listbox" aria-label="Unit">
+            <button type="button" class="li-unit-opt" role="option" data-unit="No(s)." aria-selected="false">No(s).</button>
+            <button type="button" class="li-unit-opt" role="option" data-unit="Mtr." aria-selected="false">Mtr.</button>
+            <button type="button" class="li-unit-opt" role="option" data-unit="Kg." aria-selected="false">Kg.</button>
+            <button type="button" class="li-unit-opt other" role="option" data-unit="Other" aria-selected="false">Other</button>
+          </div>
+          <input type="text" id="li-unit-${id}" name="unit" class="li-unit" placeholder="Type a unit" tabindex="-1">
+        </div>
+      </div>
       <label class="li-unserv" for="li-unserv-${id}">
         <input type="checkbox" id="li-unserv-${id}" class="li-unserv-check">
         <span>Unserviceable</span>
@@ -2946,6 +3049,7 @@ function addItemLine(){
     onSelect(code){ div.querySelector('.li-code').value = code; applyItemSelection(div, code); }
   });
   $('itemLines').appendChild(div);
+  bindUnitPicker(div);
   renumberItemLines();
 }
 $('btnAddLine').addEventListener('click', addItemLine);
@@ -2958,7 +3062,7 @@ function collectEntryLines(){
       itemCode: div.querySelector('.li-code').value.trim(),
       itemDescription: unserviceableDescription(div.querySelector('.li-desc').value, !!(chk && chk.checked)),
       qty: div.querySelector('.li-qty').value,
-      unit: div.querySelector('.li-unit').value.trim()
+      unit: liUnitValue(div)
     };
   }).filter(l=>l.itemCode && l.qty);
 }
