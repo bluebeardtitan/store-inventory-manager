@@ -269,7 +269,7 @@ const DRIVE_ROOT_NAME = 'MAK-Projects';
 const DRIVE_STORE_NAME = 'Store-Manager';
 const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
 const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
-const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','Scheme','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','Item','Qty','Unit','VoucherNo'];
 
 const API_TIMEOUT = 20000;
 const API_MAX_IN_FLIGHT = 3;
@@ -469,6 +469,40 @@ function normalizeParticulars(r){
   }
   return r;
 }
+/* Scheme and item are each stored as ONE merged column ("CODE - NAME", e.g.
+   "SM/15518 - AUGMENTATION OF ..." / "MI/01855 - D.I. PIPE - 250 MM. DIA. - K7") in the
+   transaction sheets. The old SchemeCode/SchemeName and ItemCode/ItemDescription split is
+   backward-compatible: migration merges it in, and reads split the merged column back into
+   code + name so filters/groupings keep matching on the code part. */
+function mergeCodeName(code, name){
+  code = String(code==null?'':code).trim();
+  name = String(name==null?'':name).trim();
+  if(!code) return name;
+  return name ? code + ' - ' + name : code;
+}
+function splitCodeName(merged){
+  const s = String(merged==null?'':merged).trim();
+  if(!s) return { code:'', name:'' };
+  const i = s.indexOf(' - ');
+  if(i < 0) return { code:s, name:'' };
+  return { code:s.slice(0,i).trim(), name:s.slice(i+3).trim() };
+}
+function normalizeSchemeItem(r){
+  if(r.Scheme != null && String(r.Scheme).trim() && !String(r.SchemeCode||'').trim()){
+    const p = splitCodeName(r.Scheme);
+    r.SchemeCode = p.code;
+    r.SchemeName = p.name;
+  }
+  if(r.Item != null && String(r.Item).trim() && !String(r.ItemCode||'').trim()){
+    const p = splitCodeName(r.Item);
+    r.ItemCode = p.code;
+    r.ItemDescription = p.name;
+  }
+  return r;
+}
+function normalizeTxnRow(r){
+  return normalizeSchemeItem(normalizeParticulars(r));
+}
 function particularsAgency(p){
   return String(p==null?'':p).split(',')[0].trim();
 }
@@ -486,7 +520,7 @@ async function getAllTxns(){
   for(const t of await getAllTxnTabs()){
     let vals;
     try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
-    rows.push.apply(rows, sheetRowsAsObjects(vals).map(normalizeParticulars));
+    rows.push.apply(rows, sheetRowsAsObjects(vals).map(normalizeTxnRow));
   }
   return rows;
 }

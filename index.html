@@ -1230,7 +1230,7 @@ const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
 const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
 const CONFIG_CACHE_KEY = 'bdi_store_config';
 const CONFIG_CACHE_TTL = 5*60e3;
-const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','Scheme','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','Item','Qty','Unit','VoucherNo'];
 
 let accessToken = null;
 let tokenExpiresAt = 0;
@@ -1538,6 +1538,40 @@ function normalizeParticulars(r){
   }
   return r;
 }
+/* Scheme and item are each stored as ONE merged column ("CODE - NAME", e.g.
+   "SM/15518 - AUGMENTATION OF ..." / "MI/01855 - D.I. PIPE - 250 MM. DIA. - K7") in the
+   transaction sheets. The old SchemeCode/SchemeName and ItemCode/ItemDescription split is
+   backward-compatible: migration merges it in, and reads split the merged column back into
+   code + name so filters/groupings keep matching on the code part. */
+function mergeCodeName(code, name){
+  code = String(code==null?'':code).trim();
+  name = String(name==null?'':name).trim();
+  if(!code) return name;
+  return name ? code + ' - ' + name : code;
+}
+function splitCodeName(merged){
+  const s = String(merged==null?'':merged).trim();
+  if(!s) return { code:'', name:'' };
+  const i = s.indexOf(' - ');
+  if(i < 0) return { code:s, name:'' };
+  return { code:s.slice(0,i).trim(), name:s.slice(i+3).trim() };
+}
+function normalizeSchemeItem(r){
+  if(r.Scheme != null && String(r.Scheme).trim() && !String(r.SchemeCode||'').trim()){
+    const p = splitCodeName(r.Scheme);
+    r.SchemeCode = p.code;
+    r.SchemeName = p.name;
+  }
+  if(r.Item != null && String(r.Item).trim() && !String(r.ItemCode||'').trim()){
+    const p = splitCodeName(r.Item);
+    r.ItemCode = p.code;
+    r.ItemDescription = p.name;
+  }
+  return r;
+}
+function normalizeTxnRow(r){
+  return normalizeSchemeItem(normalizeParticulars(r));
+}
 function particularsAgency(p){
   return String(p==null?'':p).split(',')[0].trim();
 }
@@ -1560,7 +1594,7 @@ async function buildAllTxnRows(){
   for(const t of await getAllTxnTabs()){
     let vals;
     try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
-    rows.push.apply(rows, sheetRowsAsObjects(vals).map(normalizeParticulars));
+    rows.push.apply(rows, sheetRowsAsObjects(vals).map(normalizeTxnRow));
   }
   return rows;
 }
@@ -1757,10 +1791,10 @@ async function actAddTransaction(body){
     slNo += 1;
     const vals = {};
     vals.SlNo = slNo; vals.Date = body.date; vals.TransactionType = body.transactionType; vals.HRNo = hrNo;
-    vals.SchemeCode = body.schemeCode; vals.SchemeName = body.schemeName;
+    vals.Scheme = mergeCodeName(body.schemeCode, body.schemeName);
     vals.Particulars = mergeParticulars(body.agencyDetails, body.workOrderDetails, body.nameOfWork);
     vals.OfficeOrderNo = body.officeOrderNo; vals.RoadChallanNo = body.roadChallanNo; vals.ItemNo = idx + 1;
-    vals.ItemCode = it.itemCode; vals.ItemDescription = it.itemDescription; vals.Qty = Number(it.qty) || 0;
+    vals.Item = mergeCodeName(it.itemCode, it.itemDescription); vals.Qty = Number(it.qty) || 0;
     vals.Unit = it.unit; vals.VoucherNo = body.voucherNo;
     return TXN_HEADERS.map(h=>vals[h] == null ? '' : vals[h]);
   });
@@ -1813,20 +1847,27 @@ async function ensureStore(){
   for(const t of (await spreadsheetMeta(ssId)).sheets.map(s=>s.properties)){
     if(t.title !== 'Transactions' && !/^Transactions_\d{4}$/.test(t.title)) continue;
     let hdr;
-    try{ hdr = (await valuesGet(ssId, t.title + '!A1:' + colLetter(TXN_HEADERS.length + 2) + '1'))[0] || []; }catch(e){ continue; }
+    try{ hdr = (await valuesGet(ssId, t.title + '!A1:' + colLetter(Math.max(20, TXN_HEADERS.length + 4)) + '1'))[0] || []; }catch(e){ continue; }
     const drops = [];
     const ci = hdr.indexOf('CreatedAt');
     if(ci > -1) drops.push(ci);
-    const aidx = hdr.indexOf('AgencyDetails'), widx = hdr.indexOf('WorkOrderDetails'), nidx = hdr.indexOf('NameOfWork');
-    if(aidx > -1 || widx > -1 || nidx > -1){
-      const target = Math.min.apply(null, [aidx,widx,nidx].filter(i=>i>-1));
-      [aidx,widx,nidx].forEach(i=>{ if(i>-1 && i!==target) drops.push(i); });
+    const merges = [
+      { from:['AgencyDetails','WorkOrderDetails','NameOfWork'], to:'Particulars', fn:mergeParticulars },
+      { from:['SchemeCode','SchemeName'], to:'Scheme', fn:mergeCodeName },
+      { from:['ItemCode','ItemDescription'], to:'Item', fn:mergeCodeName }
+    ];
+    for(const m of merges){
+      const idx = m.from.map(f=>hdr.indexOf(f));
+      const present = idx.filter(i=>i>-1);
+      if(!present.length) continue;
+      const target = Math.min.apply(null, present);
+      present.forEach(i=>{ if(i!==target) drops.push(i); });
       const vals = await valuesGet(ssId, t.title);
       if(vals && vals.length){
-        vals[0][target] = 'Particulars';
+        vals[0][target] = m.to;
         for(let i=1;i<vals.length;i++){
           if(!vals[i].some(c=>c !== '' && c != null)) continue;
-          vals[i][target] = mergeParticulars(vals[i][aidx], vals[i][widx], vals[i][nidx]);
+          vals[i][target] = m.fn.apply(null, idx.map(j=>vals[i][j]));
         }
         await valuesPut(ssId, t.title + '!A1:' + colLetter(vals[0].length) + vals.length, vals);
       }
@@ -2314,7 +2355,7 @@ function txnRowHTML(r, opts){
   const qtyTxt = opts.signed ? `${sign}${qty}` : `${qty} ${escapeHtml(unit)}`;
   return `<div class="txn-row">
     <div class="txn-main">
-      ${opts.showItem ? `<div class="item">${escapeHtml(r.ItemDescription)}</div>` : ''}
+      ${opts.showItem ? `<div class="item">${escapeHtml(r.Item || mergeCodeName(r.ItemCode, r.ItemDescription))}</div>` : ''}
       <span class="ticket ${type}">${escapeHtml(hr)}</span>
       ${opts.showVoucher
         ? (r.VoucherNo
