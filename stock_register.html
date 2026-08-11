@@ -269,7 +269,7 @@ const DRIVE_ROOT_NAME = 'MAK-Projects';
 const DRIVE_STORE_NAME = 'Store-Manager';
 const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
 const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
-const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','AgencyDetails','WorkOrderDetails','NameOfWork','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
 
 const API_TIMEOUT = 20000;
 const API_MAX_IN_FLIGHT = 3;
@@ -455,6 +455,23 @@ function sheetRowsAsObjects(vals){
   }
   return rows;
 }
+/* Transactions store a single merged `Particulars` column (backward-compatible with the
+   old AgencyDetails/WorkOrderDetails/NameOfWork split — merged on read for legacy rows). */
+function mergeParticulars(agency, workOrder, nameOfWork){
+  return [String(agency==null?'':agency).trim(),
+          String(workOrder==null?'':workOrder).trim(),
+          String(nameOfWork==null?'':nameOfWork).trim() ? 'Name of Work - ' + String(nameOfWork).trim() : '']
+    .filter(Boolean).join(', ');
+}
+function normalizeParticulars(r){
+  if(r.Particulars == null || !String(r.Particulars).trim()){
+    r.Particulars = mergeParticulars(r.AgencyDetails, r.WorkOrderDetails, r.NameOfWork);
+  }
+  return r;
+}
+function particularsAgency(p){
+  return String(p==null?'':p).split(',')[0].trim();
+}
 async function getAllTxnTabs(){
   if(txnSheetsCache.length) return txnSheetsCache;
   const meta = await spreadsheetMeta(storeConfig.spreadsheetId);
@@ -469,7 +486,7 @@ async function getAllTxns(){
   for(const t of await getAllTxnTabs()){
     let vals;
     try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
-    rows.push.apply(rows, sheetRowsAsObjects(vals));
+    rows.push.apply(rows, sheetRowsAsObjects(vals).map(normalizeParticulars));
   }
   return rows;
 }
@@ -767,10 +784,10 @@ function materialSumRows(byMat){
 }
 function regAgencySheet(rows, balances){
   const grouped = groupTransactions(rows,
-    r=>String(r.AgencyDetails||'').trim().toLowerCase(),
-    r=>({ label: r.AgencyDetails.trim(), rcv: [], iss: [] }));
+    r=>particularsAgency(r.Particulars).toLowerCase(),
+    r=>({ label: particularsAgency(r.Particulars), rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>grouped[a].label.localeCompare(grouped[b].label));
-  const particulars = r=>[r.ItemDescription, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const particulars = r=>escapeHtml(r.Particulars || '');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
@@ -795,7 +812,7 @@ function regMaterialSheet(rows, balances){
     r=>String(r.ItemCode||'').trim(),
     r=>({ label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>(grouped[a].label||a).localeCompare(grouped[b].label||b));
-  const particulars = r=>[r.AgencyDetails, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const particulars = r=>escapeHtml(r.Particulars || '');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);

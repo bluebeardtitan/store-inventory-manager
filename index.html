@@ -1230,7 +1230,7 @@ const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
 const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
 const CONFIG_CACHE_KEY = 'bdi_store_config';
 const CONFIG_CACHE_TTL = 5*60e3;
-const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','AgencyDetails','WorkOrderDetails','NameOfWork','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','SchemeCode','SchemeName','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','ItemCode','ItemDescription','Qty','Unit','VoucherNo'];
 
 let accessToken = null;
 let tokenExpiresAt = 0;
@@ -1524,6 +1524,23 @@ function sheetRowsAsObjects(vals){
   }
   return rows;
 }
+/* Transactions store a single merged `Particulars` column (backward-compatible with the
+   old AgencyDetails/WorkOrderDetails/NameOfWork split — merged on read for legacy rows). */
+function mergeParticulars(agency, workOrder, nameOfWork){
+  return [String(agency==null?'':agency).trim(),
+          String(workOrder==null?'':workOrder).trim(),
+          String(nameOfWork==null?'':nameOfWork).trim() ? 'Name of Work - ' + String(nameOfWork).trim() : '']
+    .filter(Boolean).join(', ');
+}
+function normalizeParticulars(r){
+  if(r.Particulars == null || !String(r.Particulars).trim()){
+    r.Particulars = mergeParticulars(r.AgencyDetails, r.WorkOrderDetails, r.NameOfWork);
+  }
+  return r;
+}
+function particularsAgency(p){
+  return String(p==null?'':p).split(',')[0].trim();
+}
 
 /* ---------------- Reads ---------------- */
 
@@ -1543,7 +1560,7 @@ async function buildAllTxnRows(){
   for(const t of await getAllTxnTabs()){
     let vals;
     try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
-    rows.push.apply(rows, sheetRowsAsObjects(vals));
+    rows.push.apply(rows, sheetRowsAsObjects(vals).map(normalizeParticulars));
   }
   return rows;
 }
@@ -1561,11 +1578,11 @@ function applyFilters(rows, params){
   if(params.schemeCode) rows = rows.filter(r=>r.SchemeCode === params.schemeCode);
   if(params.itemCode) rows = rows.filter(r=>r.ItemCode === params.itemCode);
   if(params.noVoucherOnly === 'true') rows = rows.filter(r=>!r.VoucherNo);
-  if(params.agency){ const q = params.agency.toLowerCase(); rows = rows.filter(r=>containsText(r.AgencyDetails, q)); }
-  if(params.workOrder){ const q = params.workOrder.toLowerCase(); rows = rows.filter(r=>containsText(r.WorkOrderDetails, q)); }
+  if(params.agency){ const q = params.agency.toLowerCase(); rows = rows.filter(r=>containsText(r.Particulars, q)); }
+  if(params.workOrder){ const q = params.workOrder.toLowerCase(); rows = rows.filter(r=>containsText(r.Particulars, q)); }
   if(params.q){
     const q = params.q.toLowerCase();
-    rows = rows.filter(r=>containsText(r.AgencyDetails,q) || containsText(r.WorkOrderDetails,q) || containsText(r.NameOfWork,q) || containsText(r.ItemDescription,q) || containsText(r.HRNo,q) || containsText(r.VoucherNo,q));
+    rows = rows.filter(r=>containsText(r.Particulars,q) || containsText(r.ItemDescription,q) || containsText(r.HRNo,q) || containsText(r.VoucherNo,q));
   }
   return rows;
 }
@@ -1594,7 +1611,7 @@ async function actStockRegister(params){
     else if((!from || d >= from) && (!to || d <= to)){
       if(r.TransactionType === 'Receipt') byItem[key].received += qty;
       else byItem[key].issued += qty;
-      byItem[key].movements.push({ date:r.Date, type:r.TransactionType, hrNo:r.HRNo, voucherNo:r.VoucherNo, agency:r.AgencyDetails, qty });
+      byItem[key].movements.push({ date:r.Date, type:r.TransactionType, hrNo:r.HRNo, voucherNo:r.VoucherNo, agency:r.Particulars, qty });
     }
   });
   Object.keys(byItem).forEach(k=>{
@@ -1608,8 +1625,7 @@ async function actFilterOptions(){
   const rows = await getAllTxns();
   const agencies = new Set(), workOrders = new Set(), schemes = {};
   rows.forEach(r=>{
-    const a = String(r.AgencyDetails||'').trim(); if(a) agencies.add(a);
-    const w = String(r.WorkOrderDetails||'').trim(); if(w) workOrders.add(w);
+    const p = String(r.Particulars||'').trim(); if(p){ agencies.add(p); workOrders.add(p); }
     const c = String(r.SchemeCode||'').trim(); if(c) schemes[c] = String(r.SchemeName||'');
   });
   const byName = (a,b)=>a.localeCompare(b);
@@ -1742,7 +1758,7 @@ async function actAddTransaction(body){
     const vals = {};
     vals.SlNo = slNo; vals.Date = body.date; vals.TransactionType = body.transactionType; vals.HRNo = hrNo;
     vals.SchemeCode = body.schemeCode; vals.SchemeName = body.schemeName;
-    vals.AgencyDetails = body.agencyDetails; vals.WorkOrderDetails = body.workOrderDetails; vals.NameOfWork = body.nameOfWork;
+    vals.Particulars = mergeParticulars(body.agencyDetails, body.workOrderDetails, body.nameOfWork);
     vals.OfficeOrderNo = body.officeOrderNo; vals.RoadChallanNo = body.roadChallanNo; vals.ItemNo = idx + 1;
     vals.ItemCode = it.itemCode; vals.ItemDescription = it.itemDescription; vals.Qty = Number(it.qty) || 0;
     vals.Unit = it.unit; vals.VoucherNo = body.voucherNo;
@@ -1798,9 +1814,26 @@ async function ensureStore(){
     if(t.title !== 'Transactions' && !/^Transactions_\d{4}$/.test(t.title)) continue;
     let hdr;
     try{ hdr = (await valuesGet(ssId, t.title + '!A1:' + colLetter(TXN_HEADERS.length + 2) + '1'))[0] || []; }catch(e){ continue; }
+    const drops = [];
     const ci = hdr.indexOf('CreatedAt');
-    if(ci > -1){
-      await batchUpdate(ssId, [{ deleteDimension:{ range:{ sheetId:t.sheetId, dimension:'COLUMNS', startIndex:ci, endIndex:ci+1 } } }]);
+    if(ci > -1) drops.push(ci);
+    const aidx = hdr.indexOf('AgencyDetails'), widx = hdr.indexOf('WorkOrderDetails'), nidx = hdr.indexOf('NameOfWork');
+    if(aidx > -1 || widx > -1 || nidx > -1){
+      const target = Math.min.apply(null, [aidx,widx,nidx].filter(i=>i>-1));
+      [aidx,widx,nidx].forEach(i=>{ if(i>-1 && i!==target) drops.push(i); });
+      const vals = await valuesGet(ssId, t.title);
+      if(vals && vals.length){
+        vals[0][target] = 'Particulars';
+        for(let i=1;i<vals.length;i++){
+          if(!vals[i].some(c=>c !== '' && c != null)) continue;
+          vals[i][target] = mergeParticulars(vals[i][aidx], vals[i][widx], vals[i][nidx]);
+        }
+        await valuesPut(ssId, t.title + '!A1:' + colLetter(vals[0].length) + vals.length, vals);
+      }
+    }
+    drops.sort((a,b)=>b-a);
+    for(const d of drops){
+      await batchUpdate(ssId, [{ deleteDimension:{ range:{ sheetId:t.sheetId, dimension:'COLUMNS', startIndex:d, endIndex:d+1 } } }]);
     }
   }
   const currentYear = currentStoreYear();
@@ -3254,10 +3287,10 @@ function materialSumRows(byMat){
 }
 function regAgencySheet(rows, balances){
   const grouped = groupTransactions(rows,
-    r=>String(r.AgencyDetails||'').trim().toLowerCase(),
-    r=>({ label: r.AgencyDetails.trim(), rcv: [], iss: [] }));
+    r=>particularsAgency(r.Particulars).toLowerCase(),
+    r=>({ label: particularsAgency(r.Particulars), rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>grouped[a].label.localeCompare(grouped[b].label));
-  const particulars = r=>[r.ItemDescription, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const particulars = r=>escapeHtml(r.Particulars || '');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
@@ -3282,7 +3315,7 @@ function regMaterialSheet(rows, balances){
     r=>String(r.ItemCode||'').trim(),
     r=>({ label: r.ItemDescription, unit: r.Unit, rcv: [], iss: [] }));
   const keys = Object.keys(grouped).sort((a,b)=>(grouped[a].label||a).localeCompare(grouped[b].label||b));
-  const particulars = r=>[r.AgencyDetails, r.NameOfWork].filter(Boolean).map(escapeHtml).join('<br>');
+  const particulars = r=>escapeHtml(r.Particulars || '');
   const sections = keys.map((k,i)=>{
     const g = grouped[k];
     const rcvRows = regRowsSorted(g.rcv), issRows = regRowsSorted(g.iss);
@@ -3400,8 +3433,8 @@ function rdScopeValue(){
 }
 function renderRdResults(data){
   lastRdRows = data.rows || [];
-  mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>r.AgencyDetails));
-  mergeRdLearned(CACHE_RD_WO_KEY, lastRdRows.map(r=>r.WorkOrderDetails));
+  mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>r.Particulars));
+  mergeRdLearned(CACHE_RD_WO_KEY, lastRdRows.map(r=>r.Particulars));
   refreshLeafPickers();
   const wrap = $('rdResults');
   wrap.classList.remove('hidden');
