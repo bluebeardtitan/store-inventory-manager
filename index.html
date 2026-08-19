@@ -404,6 +404,13 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 .pos-link.warn .pos-value{color:var(--margin);}
 .pos-link .pos-note{text-decoration:underline; text-decoration-color:var(--rule-strong); text-underline-offset:2px;}
 @media (min-width:640px){ .pos-grid{grid-template-columns:repeat(4,1fr);} }
+@media (max-width:420px){
+  .pos-head{flex-wrap:wrap;}
+  .pos-cell{padding:12px 10px 10px;}
+  .pos-label{font-size:10px; letter-spacing:.06em;}
+  .pos-value{font-size:28px; margin:5px 0 3px;}
+  .pos-note{font-size:10px;}
+}
 
 /* No-voucher pending — an inline stamped strip on the stock sheet */
 .dash-pending{
@@ -577,6 +584,9 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   .reg-mode-btn .rm-icon{width:18px; height:18px;}
   .reg-mode-btn .rm-label{font-size:12px; letter-spacing:.06em;}
   .reg-mode-btn .rm-caption{display:none;}
+  .ldg-bars{column-gap:8px;}
+  .ldg-celabel{font-size:8.5px;}
+  .ldg-num{font-size:11px; min-width:34px;}
 }
 /* Movement reports — the register's index leaves, pulled out on the dashboard */
 .rd-sub{margin:0 0 14px; font-size:12.5px; color:var(--ink-mut); line-height:1.5;}
@@ -855,7 +865,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     <label class="check-label rd-opt" for="rdNoVoucher">
       <input type="checkbox" id="rdNoVoucher" name="rdNoVoucher"> Only show lines missing a voucher no.
     </label>
-    <button type="button" class="primary" id="btnRdRun">Run report</button>
+    <button type="button" class="primary" id="btnRdRun">Show report</button>
     <button type="button" class="secondary hidden" id="btnRdExport">Export CSV</button>
   </div>
   <div class="card hidden rd-results" id="rdResults">
@@ -883,7 +893,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
     <header class="sheet-head">
       <div class="sheet-kicker" id="sheetKicker">My Office &middot; Store Register</div>
-      <h1 class="sheet-title">New entry</h1>
+      <h1 class="sheet-title" id="sheetTitle">New entry</h1>
       <div class="sheet-sub">Record an issue to an agency or a receipt into store against a work order. The HR/Back HR no. is generated when you save.</div>
     </header>
 
@@ -1139,6 +1149,10 @@ let FOPTS = { agencies: [], workOrders: [], schemes: [] };
 let transactedItems = [];
 let currentType = 'Issue';
 let lineCounter = 0;
+let editMode = false;         // true when editing an existing transaction
+let editTab = null;           // sheet tab name of the row being edited
+let editRowNum = null;        // 1-based row number in that tab
+let editOrigHRNo = null;      // original HRNo for the row being edited
 const $ = id => document.getElementById(id);
 
 /* ---------------- Client-side cache (fast boot + jiffy search) ---------------- */
@@ -1618,7 +1632,9 @@ async function buildAllTxnRows(){
   for(const t of await getAllTxnTabs()){
     let vals;
     try{ vals = await valuesGet(storeConfig.spreadsheetId, t.title); }catch(e){ continue; }
-    rows.push.apply(rows, sheetRowsAsObjects(vals).map(normalizeTxnRow));
+    const tabRows = sheetRowsAsObjects(vals).map(normalizeTxnRow);
+    tabRows.forEach(r=>{ Object.defineProperty(r, '__tab', { value:t.title, enumerable:false, writable:true }); });
+    rows.push.apply(rows, tabRows);
   }
   return rows;
 }
@@ -1852,6 +1868,30 @@ async function actUpdateVoucher(body){
   invalidateTxnCache(); txnSheetsCache = [];
   return { success:true, updated };
 }
+async function actUpdateTransaction(body){
+  if(!body.tab || !body.rowNum) throw new Error('Missing tab or row number for update.');
+  const ssId = storeConfig.spreadsheetId;
+  const vals = await valuesGet(ssId, body.tab);
+  const rowIdx = Number(body.rowNum) - 1;
+  if(rowIdx < 1 || rowIdx >= vals.length) throw new Error('Row not found in ' + body.tab);
+  const row = vals[rowIdx];
+  const hdrs = vals[0];
+  const set = (name, val)=>{ const i = hdrs.indexOf(name); if(i>-1) row[i] = val; };
+  set('Date', body.date);
+  set('TransactionType', body.transactionType);
+  set('Scheme', mergeCodeName(body.schemeCode, body.schemeName));
+  set('Particulars', mergeParticulars(body.agencyDetails, body.workOrderDetails, body.nameOfWork));
+  set('OfficeOrderNo', body.officeOrderNo);
+  set('RoadChallanNo', body.roadChallanNo);
+  set('Remarks', body.remarks || '');
+  set('Item', mergeCodeName(body.items[0].itemCode, body.items[0].itemDescription));
+  set('Qty', Number(body.items[0].qty) || 0);
+  set('Unit', body.items[0].unit);
+  set('VoucherNo', body.voucherNo);
+  await valuesPut(ssId, body.tab + '!A' + body.rowNum + ':' + colLetter(hdrs.length) + body.rowNum, [row]);
+  invalidateTxnCache(); txnSheetsCache = [];
+  return { success:true, hrNo: body.hrNo || '' };
+}
 
 /* ---------------- Store bootstrap (migrations + year-end archive) ---------------- */
 
@@ -1987,6 +2027,7 @@ async function apiPost(action, body={}){
   switch(action){
     case 'addTransaction': return actAddTransaction(body);
     case 'updateVoucher': return actUpdateVoucher(body);
+    case 'updateTransaction': return actUpdateTransaction(body);
     default: throw new Error('Unknown action: ' + action);
   }
 }
@@ -2376,7 +2417,7 @@ function txnRowHTML(r, opts){
   const unit = r.Unit || r.unit || '';
   const sign = opts.signed ? (type==='receipt'?'+':'-') : '';
   const qtyTxt = opts.signed ? `${sign}${qty}` : `${qty} ${escapeHtml(unit)}`;
-  return `<div class="txn-row">
+  return `<div class="txn-row" ${opts.rowIdx!=null ? 'data-row-idx="'+opts.rowIdx+'"' : ''}>
     <div class="txn-main">
       ${opts.showItem ? `<div class="item">${escapeHtml(r.Item || mergeCodeName(r.ItemCode, r.ItemDescription))}</div>` : ''}
       <span class="ticket ${type}">${escapeHtml(hr)}</span>
@@ -3228,6 +3269,13 @@ function buildEntryBody(lines){
   };
 }
 function renderEntryConfirm(lines, res){
+  if(editMode){
+    return `
+      <div class="confirm-banner ${currentType.toLowerCase()}">
+        Entry updated &mdash; ${lines.length} item line(s)
+        <span class="num">${res.hrNo || editOrigHRNo}</span>
+      </div>`;
+  }
   return `
     <div class="confirm-banner ${currentType.toLowerCase()}">
       Entry recorded &mdash; ${lines.length} item line(s)
@@ -3235,7 +3283,49 @@ function renderEntryConfirm(lines, res){
       ${!res.voucherNo ? '<div class="note">No voucher no. yet — add it later from Reports.</div>' : ''}
     </div>`;
 }
+function editFormFill(r){
+  editMode = true;
+  editTab = r.__tab || 'Transactions';
+  editRowNum = r.__row;
+  editOrigHRNo = r.HRNo || '';
+  const p = String(r.Particulars||'').trim();
+  const parts = p.split(',').map(s=>s.trim()).filter(Boolean);
+  const agency = parts[0] || '';
+  let wo = '', now = '';
+  for(let i=1;i<parts.length;i++){
+    const c = parts[i];
+    if(/^name of work\s*-/i.test(c)){ now = c.replace(/^name of work\s*-\s*/i,'').trim(); }
+    else if(!wo){ wo = c; }
+  }
+  const sp = splitCodeName(r.Scheme);
+  currentType = r.TransactionType || 'Issue';
+  setType(currentType);
+  $('fDate').value = r.Date || '';
+  $('fVoucherNo').value = r.VoucherNo || '';
+  $('fRemarks').value = r.Remarks || '';
+  $('fSchemeCode').value = sp.code;
+  $('fSchemeName').value = sp.name;
+  if(sp.code){ try{ schemePicker.refresh(); }catch(e){} }
+  $('fAgency').value = agency;
+  $('fWorkOrder').value = wo;
+  $('fNameOfWork').value = now;
+  $('fOfficeOrder').value = r.OfficeOrderNo || '';
+  $('fChallan').value = r.RoadChallanNo || '';
+  $('itemLines').innerHTML='';
+  addItemLine();
+  const div = $('itemLines').querySelector('.item-line');
+  div.querySelector('.li-code').value = r.ItemCode || '';
+  div.querySelector('.li-desc').value = r.ItemDescription || '';
+  div.querySelector('.li-qty').value = r.Qty || '';
+  applyItemSelection(div, r.ItemCode || '');
+  const unitBox = liUnitBox(div);
+  if(unitBox && r.Unit) liUnitSet(unitBox, r.Unit);
+  $('sheetTitle').textContent = 'Edit entry';
+  $('btnSubmit').textContent = 'Update entry';
+  goView('entry');
+}
 function resetEntryForm(){
+  exitEditMode();
   $('fSchemeCode').value='';
   $('fSchemeName').value='';
   schemePicker.close();
@@ -3249,23 +3339,42 @@ function resetEntryForm(){
   $('itemLines').innerHTML='';
   addItemLine();
 }
+function exitEditMode(){
+  editMode = false;
+  editTab = null;
+  editRowNum = null;
+  editOrigHRNo = null;
+  $('sheetTitle').textContent = 'New entry';
+  $('btnSubmit').textContent = 'Record entry';
+}
 $('btnSubmit').addEventListener('click', async ()=>{
   const lines = collectEntryLines();
   if(!lines.length){ toast('Add at least one item line with code & quantity'); return; }
   const btn = $('btnSubmit');
-  btn.disabled = true; btn.textContent = 'Recording...';
+  const wasEdit = editMode;
+  btn.disabled = true; btn.textContent = wasEdit ? 'Updating...' : 'Recording...';
   try{
-    const res = await apiPost('addTransaction', buildEntryBody(lines));
+    const body = buildEntryBody(lines);
+    let res;
+    if(wasEdit){
+      body.tab = editTab;
+      body.rowNum = editRowNum;
+      body.hrNo = editOrigHRNo;
+      res = await apiPost('updateTransaction', body);
+    }else{
+      res = await apiPost('addTransaction', body);
+    }
     $('entryConfirm').innerHTML = renderEntryConfirm(lines, res);
-    toast('Entry recorded');
+    toast(wasEdit ? 'Entry updated' : 'Entry recorded');
     resetEntryForm();
     loadMeta();
     loadTransactedItems(true);
     loadFilterOptions(true);
+    if(wasEdit && $('rdResults') && !$('rdResults').classList.contains('hidden')) $('btnRdRun').click();
   }catch(err){
     toast('Error: ' + err.message);
   }finally{
-    btn.disabled = false; btn.textContent = 'Record entry';
+    btn.disabled = false; btn.textContent = wasEdit ? 'Update entry' : 'Record entry';
   }
 });
 
@@ -3540,11 +3649,19 @@ function renderRdResults(data){
     $('rdTotal').textContent = '';
     return;
   }
-  body.innerHTML = `<div class="rl-rows">${lastRdRows.map(r=>txnRowHTML(r, { showItem:true, showVoucher:true, showBadge:true })).join('')}</div>`;
+  body.innerHTML = `<div class="rl-rows">${lastRdRows.map((r,i)=>txnRowHTML(r, { showItem:true, showVoucher:true, showBadge:true, rowIdx:i })).join('')}</div>`;
   const hrNos = new Set(lastRdRows.map(r=>r.HRNo).filter(Boolean));
   $('rdTotal').innerHTML = `<span>Total ${lastRdRows.length} line(s) &middot; ${hrNos.size} HR no.${hrNos.size===1?'':'s'}</span><span>Carried forward</span>`;
+  document.querySelectorAll('#rdBody .txn-row').forEach(el=>{
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', ()=>{
+      const idx = Number(el.dataset.rowIdx);
+      if(idx >= 0 && idx < lastRdRows.length) editFormFill(lastRdRows[idx]);
+    });
+  });
   document.querySelectorAll('.add-voucher-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
       const hrNo = btn.dataset.hr;
       const voucherNo = window.prompt('Voucher no. for ' + hrNo + ':');
       if(!voucherNo) return;
