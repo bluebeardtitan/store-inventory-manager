@@ -278,7 +278,7 @@ const DRIVE_ROOT_NAME = 'MAK-Projects';
 const DRIVE_STORE_NAME = 'Store-Manager';
 const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
 const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
-const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','Scheme','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','Item','Qty','Unit','VoucherNo'];
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','Scheme','Particulars','OfficeOrderNo','RoadChallanNo','Remarks','ItemNo','Item','Qty','Unit','VoucherNo'];
 
 const API_TIMEOUT = 20000;
 const API_MAX_IN_FLIGHT = 3;
@@ -748,7 +748,8 @@ function regRowsSorted(rows){
     (a.Date===b.Date ? (Number(a.SlNo)||0) - (Number(b.SlNo)||0) : new Date(a.Date) - new Date(b.Date)));
 }
 function regRemarks(r){
-  return [ r.VoucherNo && 'Voucher: '+r.VoucherNo,
+  return [ r.Remarks && r.Remarks,
+           r.VoucherNo && 'Voucher: '+r.VoucherNo,
            r.OfficeOrderNo && 'O.O.: '+r.OfficeOrderNo,
            r.RoadChallanNo && 'Challan: '+r.RoadChallanNo ].filter(Boolean).join('<br>');
 }

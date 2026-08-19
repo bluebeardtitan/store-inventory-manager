@@ -251,6 +251,17 @@ button:focus-visible, a:focus-visible{
   color:var(--ink-mut); cursor:pointer; user-select:none;
 }
 .item-line .li-unserv input{accent-color:var(--margin); width:14px; height:14px; cursor:pointer;}
+.item-stock{
+  display:none; align-items:center; gap:6px; margin-top:6px;
+  font-size:12px; line-height:1.4; color:var(--ink-mut);
+}
+.item-stock.show{display:flex;}
+.item-stock .stock-val{
+  font-family:var(--stamp); font-size:13px; letter-spacing:.03em;
+}
+.item-stock .stock-val.ok{color:var(--receipt);}
+.item-stock .stock-val.warn{color:var(--margin);}
+.item-stock .stock-val.zero{color:var(--ink-mut);}
 
 /* Unit — four filed index tabs on the binder rule; the chosen tab is pulled to the front */
 .li-unit-field{margin-top:14px;}
@@ -892,9 +903,13 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
           <input type="date" id="fDate">
         </div>
         <div class="field">
-          <label for="fVoucherNo">Voucher no. <span class="opt">(if known)</span></label>
+          <label for="fVoucherNo">System Generated Voucher no. <span class="opt">(if known)</span></label>
           <input type="text" id="fVoucherNo" placeholder="ISS/000024/2025-26">
         </div>
+      </div>
+      <div class="field">
+        <label for="fRemarks">Remarks</label>
+        <input type="text" id="fRemarks" placeholder="Optional notes for this transaction">
       </div>
     </section>
 
@@ -1061,7 +1076,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
     <input type="text" id="officeName" placeholder="e.g. My Office">
     <label for="storeCode">Store code <span class="opt">(used in HR numbers, e.g. ISS/000001/STORE)</span></label>
     <input type="text" id="storeCode" placeholder="e.g. STORE">
-    <label for="storeSpreadsheet">Store spreadsheet URL</label>
+    <label for="storeSpreadsheet">Store Records Spreadsheet URL</label>
     <input type="text" id="storeSpreadsheet" placeholder="https://docs.google.com/spreadsheets/d/...">
     <label for="storeMaster">Items &amp; schemes master URL</label>
     <input type="text" id="storeMaster" placeholder="https://docs.google.com/spreadsheets/d/... (ItemMaster + SchemeMaster tabs)">
@@ -1239,7 +1254,7 @@ const CONFIG_FILE_ID_KEY = 'bdi_store_config_id';
 const CONFIG_FILE_NAME_KEY = 'bdi_store_config_name';
 const CONFIG_CACHE_KEY = 'bdi_store_config';
 const CONFIG_CACHE_TTL = 5*60e3;
-const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','Scheme','Particulars','OfficeOrderNo','RoadChallanNo','ItemNo','Item','Qty','Unit','VoucherNo'];
+const TXN_HEADERS = ['SlNo','Date','TransactionType','HRNo','Scheme','Particulars','OfficeOrderNo','RoadChallanNo','Remarks','ItemNo','Item','Qty','Unit','VoucherNo'];
 
 let accessToken = null;
 let tokenExpiresAt = 0;
@@ -1668,7 +1683,9 @@ async function actFilterOptions(){
   const rows = await getAllTxns();
   const agencies = new Set(), workOrders = new Set(), schemes = {};
   rows.forEach(r=>{
-    const p = String(r.Particulars||'').trim(); if(p){ agencies.add(p); workOrders.add(p); }
+    const agency = particularsAgency(r.Particulars);
+    if(agency) agencies.add(agency);
+    const p = String(r.Particulars||'').trim(); if(p) workOrders.add(p);
     const c = String(r.SchemeCode||'').trim(); if(c) schemes[c] = String(r.SchemeName||'');
   });
   const byName = (a,b)=>a.localeCompare(b);
@@ -1804,7 +1821,7 @@ async function actAddTransaction(body){
     vals.Particulars = mergeParticulars(body.agencyDetails, body.workOrderDetails, body.nameOfWork);
     vals.OfficeOrderNo = body.officeOrderNo; vals.RoadChallanNo = body.roadChallanNo; vals.ItemNo = idx + 1;
     vals.Item = mergeCodeName(it.itemCode, it.itemDescription); vals.Qty = Number(it.qty) || 0;
-    vals.Unit = it.unit; vals.VoucherNo = body.voucherNo;
+    vals.Unit = it.unit; vals.VoucherNo = body.voucherNo; vals.Remarks = body.remarks || '';
     return TXN_HEADERS.map(h=>vals[h] == null ? '' : vals[h]);
   });
   await valuesAppend(ssId, 'Transactions', rows);
@@ -2656,22 +2673,29 @@ function mergeRdLearned(key, newValues){
   if(changed) cacheWrite(key, Array.from(set));
 }
 function leafAgencies(){
-  return Array.from(new Set(FOPTS.agencies.concat(loadRdLearned(CACHE_RD_AGENCY_KEY)).filter(Boolean)))
-    .sort((a,b)=>a.localeCompare(b));
+  const raw = FOPTS.agencies.concat(loadRdLearned(CACHE_RD_AGENCY_KEY));
+  const names = raw.map(s=>particularsAgency(s)).filter(Boolean);
+  return Array.from(new Set(names)).sort((a,b)=>a.localeCompare(b));
 }
 function leafWorkOrders(){
-  const all = new Set();
+  const byNo = {};
   Object.keys(woIndexAll).forEach(year=>{
     (woIndexAll[year] || []).forEach(r=>{
       const w = String(r.WorkOrderNo || '').trim();
-      if(w) all.add(w);
+      if(w && !byNo[w]) byNo[w] = r;
     });
   });
-  FOPTS.workOrders.concat(loadRdLearned(CACHE_RD_WO_KEY)).forEach(w=>{
-    w = String(w || '').trim();
-    if(w) all.add(w);
+  FOPTS.workOrders.forEach(s=>{
+    const agency = particularsAgency(s);
+    const woMatch = String(s).match(/WO\s*(?:NO\.?)?\s*(\S+)/i);
+    const w = woMatch ? woMatch[1] : '';
+    if(w && !byNo[w]) byNo[w] = { WorkOrderNo: w, AgencyName: agency, WorkOrderDate: '', NameOfWork: '' };
   });
-  return Array.from(all).sort((a,b)=>a.localeCompare(b));
+  loadRdLearned(CACHE_RD_WO_KEY).forEach(s=>{
+    const w = String(s || '').trim();
+    if(w && !byNo[w]) byNo[w] = { WorkOrderNo: w, AgencyName: '', WorkOrderDate: '', NameOfWork: '' };
+  });
+  return Object.values(byNo).sort((a,b)=>String(a.WorkOrderNo).localeCompare(String(b.WorkOrderNo)));
 }
 function leafSchemes(){
   return FOPTS.schemes.slice()
@@ -2962,7 +2986,7 @@ leafPickers.push(bindIndexLeaf($('rdWorkOrder'), $('rdWorkOrderSuggest'), {
   title: 'Work order index', kind: 'work orders', openOnEmpty: true, anyLabel: 'Any work order',
   list: leafWorkOrders,
   emptyMsg: 'No work orders yet — refresh master data, or add a transaction first.',
-  codeOf: s=>s, nameOf: s=>s,
+  codeOf: s=>s.WorkOrderNo, nameOf: s=>fmtDate(s.WorkOrderDate),
   onSelect(code){ $('rdWorkOrder').value = code; }
 }));
 leafPickers.push(bindIndexLeaf($('rdScheme'), $('rdSchemeSuggest'), {
@@ -3091,6 +3115,24 @@ function applyItemSelection(div, code){
     div.querySelector('.li-desc').value = unserviceableDescription(match.description, !!(chk && chk.checked));
     liUnitSet(liUnitBox(div), match.unit);
   }
+  updateItemStock(div, code);
+}
+async function updateItemStock(div, code){
+  const wrap = div.querySelector('.item-stock');
+  const val = div.querySelector('.stock-val');
+  if(!wrap || !val) return;
+  if(!code){ wrap.classList.remove('show'); return; }
+  try{
+    const rows = await getAllTxns();
+    const stock = perItemStock(rows);
+    const net = stock[code] || 0;
+    const unit = (META.items.find(i=>i.itemCode===code)||{}).unit || '';
+    val.textContent = fmtQty(net) + (unit ? ' ' + unit : '');
+    val.className = 'stock-val ' + (net > 0 ? 'ok' : net < 0 ? 'warn' : 'zero');
+    wrap.classList.add('show');
+  }catch(e){
+    wrap.classList.remove('show');
+  }
 }
 
 function addItemLine(){
@@ -3108,6 +3150,10 @@ function addItemLine(){
       <label for="li-code-${id}">Item code</label>
       <input type="text" id="li-code-${id}" name="itemCode" class="li-code" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="itemSuggest${id}">
       <div class="ix-panel" id="itemSuggest${id}"></div>
+    </div>
+    <div class="item-stock" id="itemStock-${id}">
+      <span>Current stock:</span>
+      <span class="stock-val" id="stockVal-${id}"></span>
     </div>
     <label for="li-desc-${id}">Description</label>
     <input type="text" id="li-desc-${id}" name="itemDescription" class="li-desc" placeholder="Item description">
@@ -3177,6 +3223,7 @@ function buildEntryBody(lines){
     officeOrderNo: $('fOfficeOrder').value.trim(),
     roadChallanNo: $('fChallan').value.trim(),
     voucherNo: $('fVoucherNo').value.trim(),
+    remarks: $('fRemarks').value.trim(),
     items: lines
   };
 }
@@ -3198,6 +3245,7 @@ function resetEntryForm(){
   $('fOfficeOrder').value='';
   $('fChallan').value='';
   $('fVoucherNo').value='';
+  $('fRemarks').value='';
   $('itemLines').innerHTML='';
   addItemLine();
 }
@@ -3250,7 +3298,8 @@ function regRowsSorted(rows){
     (a.Date===b.Date ? (Number(a.SlNo)||0) - (Number(b.SlNo)||0) : new Date(a.Date) - new Date(b.Date)));
 }
 function regRemarks(r){
-  return [ r.VoucherNo && 'Voucher: '+r.VoucherNo,
+  return [ r.Remarks && r.Remarks,
+           r.VoucherNo && 'Voucher: '+r.VoucherNo,
            r.OfficeOrderNo && 'O.O.: '+r.OfficeOrderNo,
            r.RoadChallanNo && 'Challan: '+r.RoadChallanNo ].filter(Boolean).join('<br>');
 }
@@ -3475,7 +3524,7 @@ function rdScopeValue(){
 }
 function renderRdResults(data){
   lastRdRows = data.rows || [];
-  mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>r.Particulars));
+  mergeRdLearned(CACHE_RD_AGENCY_KEY, lastRdRows.map(r=>particularsAgency(r.Particulars)));
   mergeRdLearned(CACHE_RD_WO_KEY, lastRdRows.map(r=>r.Particulars));
   refreshLeafPickers();
   const wrap = $('rdResults');
