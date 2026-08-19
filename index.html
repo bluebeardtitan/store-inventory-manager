@@ -228,6 +228,7 @@ button:focus-visible, a:focus-visible{
 .wo-row .ix-name{display:flex; flex-direction:column; gap:2px;}
 .wo-row .wo-agency{font-weight:600; font-size:13px;}
 .wo-row .wo-work{font-size:11.5px; color:var(--ink-mut); line-height:1.4;}
+.wo-year{font-size:10px; font-weight:600; color:var(--ink-mut); border:1px solid var(--edge); border-radius:8px; padding:1px 5px; vertical-align:middle;}
 
 /* Item lines — ledger rows */
 .item-line{
@@ -943,14 +944,9 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
       <div class="field">
         <label for="woSearch">Find work order <span class="opt">(optional shortcut)</span></label>
         <div class="wo-finder">
-          <div class="wo-finder-row">
-            <label for="woYear" class="sr-only">Work order year</label>
-            <select id="woYear" name="woYear"></select>
-            <button type="button" id="btnSyncWo" class="ghost small" title="Re-read work orders from the master file">Sync</button>
-            <div class="wo-search-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
-              <input type="text" id="woSearch" placeholder="Search agency or W/O no.">
-            </div>
+          <div class="wo-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+            <input type="text" id="woSearch" placeholder="Search agency or W/O no. — all years">
           </div>
           <div id="woResults" class="wo-results"></div>
         </div>
@@ -1157,7 +1153,7 @@ const $ = id => document.getElementById(id);
 
 /* ---------------- Client-side cache (fast boot + jiffy search) ---------------- */
 const CACHE_META_KEY = 'bdi_cache_meta';
-const CACHE_WO_KEY = 'bdi_cache_wo_';
+const CACHE_WO_ALL_KEY = 'bdi_cache_wo_all';
 const CACHE_RD_AGENCY_KEY = 'bdi_cache_rd_agency';
 const CACHE_RD_WO_KEY = 'bdi_cache_rd_wo';
 const CACHE_META_TTL = 12*3600e3; // items/schemes change rarely — 12h
@@ -1190,11 +1186,10 @@ function updateMetaCacheStatus(){
   const el = $('metaCacheStatus');
   if(!el) return;
   const m = cacheRead(CACHE_META_KEY, CACHE_META_TTL);
-  const y = $('woYear').value;
-  const w = y ? cacheRead(woIndexKey(y), CACHE_WO_TTL) : null;
+  const w = cacheRead(CACHE_WO_ALL_KEY, CACHE_WO_TTL);
   const parts = [];
   parts.push('Items &amp; schemes: ' + (m ? fmtAge(m.ts) + (m.stale ? ' (stale)' : '') : 'not cached'));
-  if(y) parts.push('Work orders ' + y + ': ' + (w ? fmtAge(w.ts) + (w.stale ? ' (stale)' : '') : 'not cached'));
+  parts.push('Work orders: ' + (w ? fmtAge(w.ts) + (w.stale ? ' (stale)' : '') : 'not cached'));
   el.innerHTML = parts.join(' &middot; ');
 }
 
@@ -1645,6 +1640,18 @@ async function getAllTxns(){
 function containsText(value, query){
   return String(value || '').toLowerCase().indexOf(query) > -1;
 }
+/* Logical search: space = AND, pipe = OR. "di pipe k7|cast iron" matches a row
+ * whose searchable fields contain "di" AND "pipe" AND "k7", OR "cast" AND "iron". */
+function logicalMatch(fields, q){
+  const ors = String(q||'').split('|').map(g=>g.trim()).filter(Boolean);
+  if(!ors.length) return true;
+  const keys = fields.map(f=>String(f==null?'':f).toLowerCase());
+  return ors.some(group=>{
+    const ands = group.split(/\s+/).map(t=>t.trim().toLowerCase()).filter(Boolean);
+    if(!ands.length) return true;
+    return ands.every(t=>keys.some(k=>k.includes(t)));
+  });
+}
 function applyFilters(rows, params){
   if(params.from){ const f = new Date(params.from); rows = rows.filter(r=>new Date(r.Date) >= f); }
   if(params.to){ const t = new Date(params.to); rows = rows.filter(r=>new Date(r.Date) <= t); }
@@ -1762,6 +1769,26 @@ async function actWorkOrders(params){
   return { rows: rows.slice(0, WORK_ORDER_SNIPPET_MAX) };
 }
 const WORK_ORDER_SNIPPET_MAX = 20; // legacy snippet cap; the full index is fetched via actWorkOrderIndex
+async function actWorkOrderIndexAll(){
+  const woId = storeConfig.workOrderMasterSheetId ? extractSheetId(storeConfig.workOrderMasterSheetId) : '';
+  if(!woId) return { rows:[], years:[], note:'No Work Order Master file configured.' };
+  let years = [];
+  try{
+    const m = await spreadsheetMeta(woId);
+    years = (m.sheets||[]).map(s=>s.properties.title).filter(t=>/^\d{4}$/.test(t)).sort().reverse();
+  }catch(e){}
+  const rows = [];
+  for(const year of years){
+    try{
+      const vals = await valuesGet(woId, year);
+      sheetRowsAsObjects(vals).forEach(r=>{
+        if(!String(r.WorkOrderNo||'').trim()) return;
+        rows.push({ AgencyName:r.AgencyName, WorkOrderNo:r.WorkOrderNo, WorkOrderDate:r.WorkOrderDate, NameOfWork:r.NameOfWork, Year:year });
+      });
+    }catch(e){ /* skip unreadable year tab */ }
+  }
+  return { rows, years };
+}
 function monthlyTotals(rows, monthStart){
   const t = { issuedQty:0, receivedQty:0, issuedLines:0, receivedLines:0 };
   rows.forEach(r=>{
@@ -2002,6 +2029,7 @@ function emptyFor(action){
     case 'filterOptions': return { agencies:[], workOrders:[], schemes:[] };
     case 'meta': return { items:[], schemes:[], workOrderYears:[] };
     case 'workOrderIndex': return { rows:[], note:'' };
+    case 'workOrderIndexAll': return { rows:[], years:[], note:'' };
     case 'workOrders': return { rows:[] };
     case 'dashboard': return { monthIssuedQty:0, monthReceivedQty:0, monthIssuedLines:0, monthReceivedLines:0, yearIssuedHrs:0, yearReceivedHrs:0, positiveStock:0, negativeStock:0, totalTxns:0, pendingVoucher:0, recent:[] };
     default: return { error:'Unknown action: ' + action };
@@ -2016,6 +2044,7 @@ async function apiGet(action, params={}){
     case 'filterOptions': return actFilterOptions();
     case 'meta': return actMeta();
     case 'workOrderIndex': return actWorkOrderIndex(params);
+    case 'workOrderIndexAll': return actWorkOrderIndexAll();
     case 'workOrders': return actWorkOrders(params);
     case 'dashboard': return actDashboard();
     default: return { error:'Unknown action: ' + action };
@@ -2155,7 +2184,7 @@ async function maybeAutoPickConfig(){
       $('storeStatus').textContent = 'Connected to ' + (cfg.storeName || 'your store') + '.';
       toast('Store connected');
       loadMeta();
-      prefetchAllWoIndexes();
+      loadWoAll();
       loadDashboard();
     }else if(files.length > 1){
       $('storeStatus').textContent = 'Found ' + files.length + ' store config files under MAK-Projects/Store-Manager/. Pick one below and press "Save & connect".';
@@ -2304,7 +2333,7 @@ $('btnSaveStore').addEventListener('click', ()=>{
       toast('Store connected');
       updateMetaCacheStatus();
       loadMeta();
-      prefetchAllWoIndexes();
+      loadWoAll();
       loadFilterOptions();
       loadTransactedItems();
       loadDashboard();
@@ -2317,7 +2346,7 @@ $('btnRefreshMeta').addEventListener('click', async ()=>{
     $('storeStatus').textContent = 'Refreshing work orders and dropdowns...';
     toast('Master data refreshed');
     updateMetaCacheStatus();
-    await prefetchAllWoIndexes(true);
+    await loadWoAll(true);
     await loadFilterOptions(true);
     await loadTransactedItems(true);
   }, { done: 'Master data and work orders refreshed.', fail: 'Refresh failed' });
@@ -2352,7 +2381,6 @@ async function loadMeta(force){
   const data = await apiGet('meta', force ? { refresh:'1' } : {});
   META = data;
   cacheWrite(CACHE_META_KEY, data);
-  populateYearSelect();
 }
 
 function rememberTransactedItems(items){
@@ -2478,10 +2506,10 @@ function ledgerRangeKey(){
   return CACHE_SREG_KEY + ($('regFrom').value||'*') + '|' + ($('regTo').value||'*');
 }
 function filterLedgerItems(){
-  const q = ($('ledSearch').value || '').trim().toLowerCase();
+  const q = ($('ledSearch').value || '').trim();
   const pos = $('ledPos').value;
   return ledgerItems.filter(it=>{
-    if(q && !String(it.itemCode||'').toLowerCase().includes(q) && !String(it.description||'').toLowerCase().includes(q)) return false;
+    if(q && !logicalMatch([it.itemCode, it.description], q)) return false;
     if(pos==='inStock' && !(Number(it.closing) > 0)) return false;
     if(pos==='short' && !(Number(it.closing) < 0)) return false;
     return true;
@@ -2637,65 +2665,35 @@ function openLedger(opts){
 /* ---------------- New Entry ---------------- */
 $('fDate').valueAsDate = new Date();
 
-function clientYear(dateStr){
-  const d = new Date(dateStr || Date.now());
-  return d.getFullYear();
-}
-function populateYearSelect(){
-  const sel = $('woYear');
-  const current = clientYear($('fDate').value);
-  const years = new Set(META.workOrderYears || []);
-  years.add(String(current));
-  sel.innerHTML = Array.from(years).sort().reverse()
-    .map(y=>`<option value="${y}" ${Number(y)===current?'selected':''}>${y}</option>`).join('');
-}
-
 let woSearchTimer = null;
 let woSeq = 0;
-let woIndex = null;
-let woIndexAll = {};
+let woAllRows = null;
+let woAllLoading = null;
 
-function woIndexKey(year){ return CACHE_WO_KEY + year; }
-
-async function prefetchWoIndex(){
-  const year = $('woYear').value;
-  if(!year) return;
-  if(woIndex && woIndex.year === year && !woIndex.stale){ refreshLeafPickers(); return; }
-  const c = cacheRead(woIndexKey(year), CACHE_WO_TTL);
-  if(c){
-    woIndex = { year, rows: c.data, stale: c.stale };
-    woIndexAll[year] = c.data;
-    refreshLeafPickers();
-    if(!c.stale) return;
-  }
-  try{
-    const data = await apiGet('workOrderIndex', { year });
-    if(data.rows){
-      woIndex = { year, rows: data.rows, stale: false };
-      woIndexAll[year] = data.rows;
-      cacheWrite(woIndexKey(year), data.rows);
+/* Fetch the WHOLE work-order master (every year tab) in one pass. Used by the
+ * data-entry finder and the work-order dropdown, so there's no per-year syncing.
+ * Single-flight: concurrent callers share one request. */
+async function loadWoAll(force){
+  if(!force && woAllRows) return woAllRows;
+  if(woAllLoading) return woAllLoading;
+  woAllLoading = (async ()=>{
+    const c = force ? null : cacheRead(CACHE_WO_ALL_KEY, CACHE_WO_TTL);
+    if(c && Array.isArray(c.data)){
+      woAllRows = c.data;
       refreshLeafPickers();
+      if(!c.stale) return woAllRows;
     }
-  }catch(e){ /* keep whatever we have */ }
-}
-
-/* Download the work-order index for EVERY known year (plus the current one) so
- * the work-order dropdown and the year-switching finder are fully seeded. */
-async function prefetchAllWoIndexes(force){
-  const years = new Set(META.workOrderYears || []);
-  years.add(String(clientYear($('fDate').value)));
-  await Promise.all(Array.from(years).map(async year=>{
-    const c = force ? null : cacheRead(woIndexKey(year), CACHE_WO_TTL);
-    if(c){ woIndexAll[year] = c.data; return; }
     try{
-      const data = await apiGet('workOrderIndex', force ? { year, refresh:'1' } : { year });
+      const data = await apiGet('workOrderIndexAll');
       if(data.rows){
-        woIndexAll[year] = data.rows;
-        cacheWrite(woIndexKey(year), data.rows);
+        woAllRows = data.rows;
+        cacheWrite(CACHE_WO_ALL_KEY, data.rows);
+        refreshLeafPickers();
       }
     }catch(e){ /* keep whatever we have */ }
-  }));
-  refreshLeafPickers();
+    return woAllRows || [];
+  })();
+  try{ return await woAllLoading; } finally { woAllLoading = null; }
 }
 
 /* ---------------- Movement report dropdowns (transaction-derived, self-learning from results) ---------------- */
@@ -2720,11 +2718,9 @@ function leafAgencies(){
 }
 function leafWorkOrders(){
   const byNo = {};
-  Object.keys(woIndexAll).forEach(year=>{
-    (woIndexAll[year] || []).forEach(r=>{
-      const w = String(r.WorkOrderNo || '').trim();
-      if(w && !byNo[w]) byNo[w] = r;
-    });
+  (woAllRows || []).forEach(r=>{
+    const w = String(r.WorkOrderNo || '').trim();
+    if(w && !byNo[w]) byNo[w] = r;
   });
   FOPTS.workOrders.forEach(s=>{
     const agency = particularsAgency(s);
@@ -2755,17 +2751,17 @@ function filterWoRows(rows, q){
   );
 }
 
-function paintWoResults(results, rows, q, year, seq){
+function paintWoResults(results, rows, q, seq){
   if(seq !== woSeq) return;
   if(!rows.length){
     results.innerHTML = ixHead('Work order index') +
-      `<div class="ix-empty">No matches for “${escapeHtml(q)}” in ${year}.</div>`;
+      `<div class="ix-empty">No matches for “${escapeHtml(q)}” across all years.</div>`;
     results.classList.add('open');
     return;
   }
   results.innerHTML = ixHead('Work order index', rows.length) + rows.map((r,i)=>`
     <div class="ix-row wo-row" data-i="${i}">
-      <span class="ix-code">${escapeHtml(r.WorkOrderNo||'—')}</span>
+      <span class="ix-code">${escapeHtml(r.WorkOrderNo||'—')}${r.Year ? ` <span class="wo-year">${escapeHtml(r.Year)}</span>` : ''}</span>
       <span class="ix-name">
         <span class="wo-agency">${escapeHtml(r.AgencyName||'')}</span>
         <span class="wo-work">${escapeHtml(r.NameOfWork||'')}</span>
@@ -2786,100 +2782,21 @@ function paintWoResults(results, rows, q, year, seq){
   });
 }
 
-async function revalidateWoIndex(year, seq){
-  try{
-    const data = await apiGet('workOrderIndex', { year });
-    if(seq !== woSeq) return;
-    if(data.rows){
-      woIndex = { year, rows: data.rows, stale: false };
-      woIndexAll[year] = data.rows;
-      cacheWrite(woIndexKey(year), data.rows);
-      refreshLeafPickers();
-      if($('woYear').value === year && $('woSearch').value.trim()) runWoSearch();
-    }
-  }catch(e){}
-}
-
 $('woSearch').addEventListener('input', ()=>{
   $('woResults').classList.remove('open');
   clearTimeout(woSearchTimer);
   woSearchTimer = setTimeout(runWoSearch, WO_SEARCH_DEBOUNCE_MS);
 });
-$('woYear').addEventListener('change', ()=>{ prefetchWoIndex(); runWoSearch(); });
-$('btnSyncWo').addEventListener('click', async ()=>{
-  const btn = $('btnSyncWo');
-  btn.disabled = true;
-  const year = $('woYear').value;
-  try{
-    const data = await apiGet('workOrderIndex', { year, refresh:'1' });
-    if(data.rows){
-      woIndex = { year, rows: data.rows, stale: false };
-      woIndexAll[year] = data.rows;
-      cacheWrite(woIndexKey(year), data.rows);
-      toast('Work orders refreshed for ' + year);
-      runWoSearch();
-    }else{
-      toast(data.note || 'Nothing to sync');
-    }
-  }catch(err){ toast('Sync failed: ' + err.message); }
-  btn.disabled = false;
-});
 
 async function runWoSearch(){
   const seq = ++woSeq;
   const q = $('woSearch').value.trim();
-  const year = $('woYear').value;
   const results = $('woResults');
   if(!q){ results.innerHTML=''; results.classList.remove('open'); return; }
-  if(!year){ paintWoResults(results, [], q, '—', seq); return; }
-  // Fast path: local index (memory or localStorage), stale-while-revalidate
-  let idx = (woIndex && woIndex.year === year) ? woIndex : null;
-  if(!idx){
-    const c = cacheRead(woIndexKey(year), CACHE_WO_TTL);
-    if(c) idx = { year, rows: c.data, stale: c.stale };
-  }
-  if(idx && idx.rows){
-    woIndexAll[year] = idx.rows;
-    if(idx.stale) revalidateWoIndex(year, seq);
-    paintWoResults(results, filterWoRows(idx.rows, q).slice(0, SUGGEST_MAX), q, year, seq);
-    return;
-  }
-  // Slow path: download the year index once, then search locally
-  try{
-    const data = await apiGet('workOrderIndex', { year });
-    if(seq !== woSeq) return;
-    if(!data.rows){
-      results.innerHTML = ixHead('Work order index') +
-        `<div class="ix-empty">${escapeHtml(data.note || 'No work orders for ' + year + '.')}</div>`;
-      results.classList.add('open');
-      return;
-    }
-    woIndex = { year, rows: data.rows, stale: false };
-    woIndexAll[year] = data.rows;
-    cacheWrite(woIndexKey(year), data.rows);
-    paintWoResults(results, filterWoRows(data.rows, q).slice(0, SUGGEST_MAX), q, year, seq);
-  }catch(err){
-    if(seq !== woSeq) return;
-    await runLegacyWoSearch(results, q, year, seq);
-  }
-}
-
-async function runLegacyWoSearch(results, q, year, seq){
-  try{
-    const d = await apiGet('workOrders', { year, q });
-    if(seq !== woSeq) return;
-    if(!d.rows || !d.rows.length){
-      results.innerHTML = ixHead('Work order index') +
-        `<div class="ix-empty">${escapeHtml(d.note || 'No matches for “' + escapeHtml(q) + '” in ' + year + '.')}</div>`;
-      results.classList.add('open');
-      return;
-    }
-    paintWoResults(results, d.rows, q, year, seq);
-  }catch(err2){
-    if(seq !== woSeq) return;
-    results.innerHTML = ixHead('Work order index') + `<div class="ix-empty">${escapeHtml(err2.message)}</div>`;
-    results.classList.add('open');
-  }
+  let rows = await loadWoAll();
+  if(!rows.length) rows = await loadWoAll(true);
+  if(seq !== woSeq) return;
+  paintWoResults(results, filterWoRows(rows, q).slice(0, SUGGEST_MAX), q, seq);
 }
 $('woSearch').addEventListener('keydown', (e)=>{
   const results = $('woResults');
@@ -2937,7 +2854,7 @@ function renderLeafPanel(panel, input, cfg, open, close){
   let matches;
   if(q){
     matches = list
-      .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
+      .filter(s=>logicalMatch([cfg.codeOf(s), cfg.nameOf(s)], q))
       .slice(0, SUGGEST_MAX);
   } else if(cfg.openOnEmpty){
     matches = list.slice(0, SUGGEST_MAX);
@@ -3702,7 +3619,6 @@ $('btnRdExport').addEventListener('click', ()=>{
 /* ---------------- Boot ---------------- */
 applyStoreName();
 loadMetaFromCache();
-populateYearSelect();
 updateMetaCacheStatus();
 loadTransactedItems();
 loadFilterOptions();
@@ -3718,7 +3634,7 @@ resumePendingConnect()
       setAuthUi();
       updateMetaCacheStatus();
       loadMeta();
-      prefetchAllWoIndexes();
+      loadWoAll();
       loadFilterOptions();
       loadTransactedItems();
       loadDashboard();

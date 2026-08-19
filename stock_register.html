@@ -655,6 +655,17 @@ async function loadItems(){
 
 const SUGGEST_MAX = 30;
 const IX_CLOSE_DELAY_MS = 120;
+/* Logical search: space = AND, pipe = OR. */
+function logicalMatch(fields, q){
+  const ors = String(q||'').split('|').map(g=>g.trim()).filter(Boolean);
+  if(!ors.length) return true;
+  const keys = fields.map(f=>String(f==null?'':f).toLowerCase());
+  return ors.some(group=>{
+    const ands = group.split(/\s+/).map(t=>t.trim().toLowerCase()).filter(Boolean);
+    if(!ands.length) return true;
+    return ands.every(t=>keys.some(k=>k.includes(t)));
+  });
+}
 const ixHead = (title, count) => `<div class="ix-head">
   <span class="ix-title">${title}</span>
   ${count ? `<span class="ix-count">${count} ${count===1?'match':'matches'}</span>` : ''}
@@ -684,7 +695,7 @@ function bindIndexLeaf(input, panel, cfg){
     let matches;
     if(q){
       matches = list
-        .filter(s=>cfg.codeOf(s).toLowerCase().includes(q) || (cfg.nameOf(s)||'').toLowerCase().includes(q))
+        .filter(s=>logicalMatch([cfg.codeOf(s), cfg.nameOf(s)], q))
         .slice(0, SUGGEST_MAX);
     } else if(cfg.openOnEmpty){
       matches = list.slice(0, SUGGEST_MAX);
