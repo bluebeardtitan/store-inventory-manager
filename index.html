@@ -3017,7 +3017,7 @@ const schemePicker = bindIndexLeaf(fSchemeCode, schemeSuggest, {
  * the field still accepts free text (part of a name / code is fine). */
 const leafPickers = [];
 leafPickers.push(bindIndexLeaf($('rdAgency'), $('rdAgencySuggest'), {
-  title: 'Agency index', kind: 'agencies', openOnEmpty: true, anyLabel: 'Any agency',
+  title: 'Agency', kind: 'agencies', openOnEmpty: true, anyLabel: 'Any agency',
   list: leafAgencies,
   emptyMsg: 'No agencies in the register yet. Add a transaction or run a movement report first.',
   codeOf: s=>s, nameOf: s=>s,
@@ -3038,7 +3038,7 @@ leafPickers.push(bindIndexLeaf($('rdScheme'), $('rdSchemeSuggest'), {
   onSelect(code){ $('rdScheme').value = code; }
 }));
 leafPickers.push(bindIndexLeaf($('regAgency'), $('regAgencySuggest'), {
-  title: 'Agency index', kind: 'agencies', openOnEmpty: true, anyLabel: 'Any agency',
+  title: 'Agency', kind: 'agencies', openOnEmpty: true, anyLabel: 'Any agency',
   list: leafAgencies,
   emptyMsg: 'No agencies in the register yet. Add a transaction or run a movement report first.',
   codeOf: s=>s, nameOf: s=>s,
