@@ -893,7 +893,7 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 
     <header class="sheet-head">
       <div class="sheet-kicker" id="sheetKicker">My Office &middot; Store Register</div>
-      <h1 class="sheet-title" id="sheetTitle">New entry</h1>
+      <h1 class="sheet-title" id="sheetTitle">Data entry</h1>
       <div class="sheet-sub">Record an issue to an agency or a receipt into store against a work order. The HR/Back HR no. is generated when you save.</div>
     </header>
 
@@ -989,8 +989,8 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
 <!-- STOCK REGISTER (material position + register sheet) -->
 <div class="view" id="view-register">
   <div class="card">
-    <h3>Stock register</h3>
-    <div class="reg-mode" role="tablist" aria-label="Stock register mode">
+    <h3>Stock report</h3>
+    <div class="reg-mode" role="tablist" aria-label="Stock report mode">
       <button type="button" class="reg-mode-btn active" data-reg-mode="ledger" role="tab" aria-selected="true" aria-controls="pane-ledger">
         <svg class="rm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 19V10M12 19V5M19 19v-6"/><path d="M3 19h18"/></svg>
         <span class="rm-txt">
@@ -1126,11 +1126,11 @@ button.ghost.small{padding:5px 10px; font-size:11.5px; margin-top:4px;}
   </button>
   <button class="nav-btn" data-view="entry">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-    <span>New Entry</span>
+    <span>Data entry</span>
   </button>
   <button class="nav-btn" data-view="register">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z" stroke-linejoin="round"/><path d="M8 9h8M8 13h8M8 17h5" stroke-linecap="round"/></svg>
-    <span>Stock register</span>
+    <span>Stock report</span>
   </button>
   <button class="nav-btn" data-view="settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
@@ -3289,13 +3289,19 @@ function editFormFill(r){
   editRowNum = r.__row;
   editOrigHRNo = r.HRNo || '';
   const p = String(r.Particulars||'').trim();
-  const parts = p.split(',').map(s=>s.trim()).filter(Boolean);
-  const agency = parts[0] || '';
-  let wo = '', now = '';
-  for(let i=1;i<parts.length;i++){
-    const c = parts[i];
-    if(/^name of work\s*-/i.test(c)){ now = c.replace(/^name of work\s*-\s*/i,'').trim(); }
-    else if(!wo){ wo = c; }
+  let agency = '', wo = '', now = '';
+  const mk = 'name of work -';
+  const mi = p.toLowerCase().indexOf(mk);
+  if(mi > -1){
+    now = p.slice(mi + mk.length).replace(/^[,\s]+/,'').trim();
+    const pre = p.slice(0, mi).replace(/[,\s]+$/,'');
+    const c = pre.indexOf(',');
+    agency = (c > -1 ? pre.slice(0,c) : pre).trim();
+    wo = (c > -1 ? pre.slice(c+1) : '').trim();
+  }else{
+    const parts = p.split(',').map(s=>s.trim()).filter(Boolean);
+    agency = parts[0] || '';
+    wo = parts.slice(1).join(', ');
   }
   const sp = splitCodeName(r.Scheme);
   currentType = r.TransactionType || 'Issue';
@@ -3305,7 +3311,6 @@ function editFormFill(r){
   $('fRemarks').value = r.Remarks || '';
   $('fSchemeCode').value = sp.code;
   $('fSchemeName').value = sp.name;
-  if(sp.code){ try{ schemePicker.refresh(); }catch(e){} }
   $('fAgency').value = agency;
   $('fWorkOrder').value = wo;
   $('fNameOfWork').value = now;
@@ -3344,7 +3349,7 @@ function exitEditMode(){
   editTab = null;
   editRowNum = null;
   editOrigHRNo = null;
-  $('sheetTitle').textContent = 'New entry';
+  $('sheetTitle').textContent = 'Data entry';
   $('btnSubmit').textContent = 'Record entry';
 }
 $('btnSubmit').addEventListener('click', async ()=>{
